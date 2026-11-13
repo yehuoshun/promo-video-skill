@@ -18,6 +18,8 @@
 *.js   text eol=lf
 *.mjs  text eol=lf
 *.yml  text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
 
 # 二进制，不做任何转换
 *.png  binary
