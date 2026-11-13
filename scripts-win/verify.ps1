@@ -1,6 +1,6 @@
 ﻿# 一把过：把散着的检查串成一条命令，交付前只跑这一个。
 #
-# 为什么要有它：到 P5 为止已经有七个闸门（环境、时间轴、素材、配乐、静帧、排版、成片），
+# 为什么要有它：到 P6 为止已经有八个闸门（环境、时间轴、素材、配乐、同步、静帧、排版、成片），
 # 但它们分散在 docs 和 AGENTS 的阶段表里，靠人记住「这一步该跑哪三个」。
 # 忘一条就等于没有——所以合成一条，一条命令出结论，任一 ERROR 就 exit 1。
 #
@@ -237,7 +237,7 @@ if (-not (Test-Path -LiteralPath $publicDir)) {
 # ---------- 5. 配乐 ----------
 
 # 只查「配乐本身对不对」：时长、电平、拍点是否落在 timing.json 声明的网格上。
-# 成片里到底有没有声音，是第 7 步 check_video.py 的事（它读 MP4 的 soun 轨）。
+# 成片里到底有没有声音，是第 9 步 check_video.py 的事（它读 MP4 的 soun 轨）。
 $bgmPath = $null
 $bgmName = 'bgm.wav'
 if (Test-Path -LiteralPath $timingPath) {
@@ -273,7 +273,17 @@ if (-not $bgmPath) {
     Report '配乐' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p2) $v.Detail
 }
 
-# ---------- 6. 静帧 ----------
+# ---------- 6. 同步（音画字三对齐） ----------
+
+# 画面看 scenes、字幕看 voiceLines、声音看 public/vo/*.wav——三者错位是别的闸门查不到的缝：
+# 话没说完画面就切了、两句字幕同屏、CTA 落地是哑的、改了字幕没重新合成。
+$sw.Restart()
+$p = Invoke-Proc $py @((Join-Path $here 'check_sync.py'), '-Project', $root)
+$sw.Stop()
+$v = Verdict $p
+Report '同步' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
+
+# ---------- 7. 静帧 ----------
 
 $stillsDir = Join-Path $root 'out\stills'
 if (-not (Test-Path -LiteralPath $stillsDir)) {
@@ -286,7 +296,7 @@ if (-not (Test-Path -LiteralPath $stillsDir)) {
     Report '静帧' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
 }
 
-# ---------- 7. 排版探针（HTML 样帧） ----------
+# ---------- 8. 排版探针（HTML 样帧） ----------
 
 if (-not $Html -or $Html.Count -eq 0) {
     $cand = @(Get-ChildItem -LiteralPath $root -Filter '*.html' -File -ErrorAction SilentlyContinue)
@@ -333,7 +343,7 @@ if ($Html.Count -eq 0) {
     Report '排版' $worst $totalMs $detail @($detailLines | Select-Object -First 8)
 }
 
-# ---------- 8. 成片 ----------
+# ---------- 9. 成片 ----------
 
 $outDir = Join-Path $root 'out'
 $mp4 = $null
@@ -366,7 +376,7 @@ if (-not $mp4) {
     Report '成片' $v.Status $sw.Elapsed.TotalMilliseconds (($([System.IO.Path]::GetFileName($mp4)) + '  ' + (VerdictText $v $p))) $v.Detail
 }
 
-# ---------- 9. 编码（只在 -Self 时查工具仓库自己） ----------
+# ---------- 10. 编码（只在 -Self 时查工具仓库自己） ----------
 
 if ($Self) {
     $fix = Join-Path $here 'fix-encoding.ps1'

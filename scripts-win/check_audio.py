@@ -252,6 +252,7 @@ def main() -> int:
     # ---- 节拍核对 ----
     beats = timing.get("beats") or {}
     bpm = args.bpm if args.bpm is not None else beats.get("bpm")
+    fps_from_timing = (timing or {}).get("fps")
     offset = args.offset if args.offset is not None else beats.get("offset")
     if narration and args.bpm is None:
         # 说话的音频没有拍子可测：默认跳过，硬测只会撞出假报警
@@ -278,6 +279,22 @@ def main() -> int:
                               f"或重做音乐，别在场景里补偏移")
     elif args.timing and not narration:
         warns.append("timing.json 里没有 beats.bpm，跳过节拍核对")
+
+    # ---- 拍点与帧的整除关系 ----
+    # 场景切点要同时「踩在拍上」和「落在整帧上」。100BPM@30fps 一拍正好 18 帧，
+    # 但只要 offset 是半帧（0.15s = 4.5 帧），所有拍点都落在半帧上，
+    # 于是一个切点要么踩拍（x.xxx5 秒）、要么整帧——不可能两全。
+    if args.timing and bpm and offset is not None:
+        fps = fps_from_timing or 30
+        off_frames = offset * fps
+        period_frames = (60.0 / bpm) * fps
+        if abs(off_frames - round(off_frames)) > 0.02:
+            warns.append(f"首拍 {offset:.3f}s = {off_frames:.1f} 帧，不落在整帧上："
+                         f"踩拍的场景切点必然半帧，check_timing 会报「不落在整帧上」。"
+                         f"把 beats.offset 改成 1/{fps}s 的整数倍（如 0.1 = 第 3 帧）")
+        elif abs(period_frames - round(period_frames)) > 0.02:
+            warns.append(f"一拍 {period_frames:.2f} 帧，不是整数：换 {round(60.0 / bpm * fps * 30 / fps)} 附近的 BPM，"
+                         f"或接受切点与拍点差半帧")
 
     # ---- 人声与音乐的落差 ----
     if args.voice:

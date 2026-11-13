@@ -33,7 +33,35 @@ export type Timing = {
   };
   beats?: { bpm: number; offset: number };
   audio?: AudioCfg;
+  /**
+   * 旁白逐句表，由 scripts-win/gen_vo.py 生成——不要手改 at/dur，
+   * 改了就和 public/vo/*.wav 对不上（check_sync.py 会报时长不符）。
+   */
+  voiceLines?: VoiceLine[];
   scenes: Scene[];
+};
+
+/**
+ * 一句旁白。核心事实：at 是合成时定的、dur 是从 wav 量的，
+ * 所以「这句在第几秒说」不需要猜——字幕、音轨、校验读的都是同一份。
+ */
+export type VoiceLine = {
+  /** 场景 id + 句号，例如 hook-01-1 */
+  id: string;
+  /** 属于哪个场景，用来校验它没有飘出画面 */
+  scene: string;
+  /** 起始秒数（已对齐到整帧） */
+  at: number;
+  /** 这句话说多久（秒），等于 wav 实际长度 */
+  dur: number;
+  /** 字幕文本，同时也是合成用的文本 */
+  text: string;
+  /** 相对 public/ 的路径，例如 vo/hook-01-1.wav */
+  file: string;
+  /** 文本指纹，用来发现「字幕改了但没重新合成」 */
+  sha1?: string;
+  /** 每秒字数，念得太快听不清 */
+  rate?: number;
 };
 
 /** 一记音效：at 是全局秒数，与 scenes[].start 用同一把尺 */
