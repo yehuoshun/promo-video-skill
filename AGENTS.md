@@ -33,7 +33,7 @@
 | 5 | 配乐与节拍 | `public/bgm.wav`、`timing.json` 的 `audio` 段 | `check_audio.py public/bgm.wav --timing timing.json` 无 ERROR：BPM 差 ≤2、相位差 ≤60ms |
 | 6 | 分镜与场景 | `timing.json`、`src/scenes/` | `check_timing.py` 无 ERROR + `check_sync.py` 无 ERROR（字幕/旁白/画面同一份时间） |
 | 7 | 配音与字幕（可选） | `public/vo/*.wav`、`voiceLines` | `gen_vo.py` 逐句合成后 `check_sync.py` 无 ERROR：句子不越场景、字幕不撞车；无旁白就跳过，直接进 8 |
-| 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `npm run stills` 截、`check_stills.py` 无 ERROR + 校验清单 B 层全勾 |
+| 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `npm run stills` 截、`check_stills.py` 无 ERROR + 校验清单 B 层全勾（`probe.cmd` 只量 HTML，Remotion 画面没有 DOM 可量，裁字/变形这条得靠静帧肉眼） |
 | 9 | 渲染交付 | `out/final-4k.mp4` | `scripts-win\verify.cmd .` 0 失败（含 check_video 0 ERROR）+ 校验清单 C 层全勾 |
 | 10 | 改版 | 新版本 | 改动写进 `需求确认.md` 的修改记录 |
 
