@@ -8,6 +8,7 @@
 npm install
 npm run render          # → out/demo-1080p.mp4（15 秒 demo）
 npm run render4k        # → out/demo-4k.mp4（3840×2160）
+npm run render:effects  # → out/effects.mp4（六个效果的样板间，18 秒）
 npm run still           # → out/still.png（单帧，调版式时用）
 npm run studio          # 浏览器里实时预览，改代码即时刷新
 ```
@@ -36,10 +37,38 @@ src/lib/timing.ts      读 timing.json，秒/帧换算
 src/lib/anim.ts        帧 → 值的纯函数（ramp/keys/impulse/shake/typed/beatAt）
 src/lib/theme.ts       配色与字体
 src/components/        Backdrop 等可复用外壳
-src/scenes/            Hook / Showcase / Cta
+src/effects/           六个效果组件，全是 (frame, fps, opts) 纯函数
+src/scenes/            Hook / Showcase / Cta / EffectsLab
 public/                截图、音乐、字体（原图，不压缩）
 out/                   渲染产物（不进 git）
 ```
+
+## 效果组件（`src/effects/`）
+
+六个能直接拼进场景的组件。都只吃 `frame` 和 `fps`，没有内部状态、没有 `useEffect`、没有 CSS 动画，
+所以任意帧都能单独渲染——这是它们能被 Remotion 用、也不会让 4K 糊的前提。
+
+| 组件 | 做什么 | 常用参数 | 适合配什么语义 |
+|---|---|---|---|
+| `GradientMesh` | 会呼吸的多点渐变底 | `colors` / `speed` / `opacity` | 所有片段的底，替代纯黑 |
+| `FilmLook` | 颗粒 + 暗角 | `grain` / `vignette` | 压住"AI 味"，让画面像拍出来的 |
+| `LightSweep` | 一条斜向亮带扫过 | `start` / `duration` / `angle` / `width` / `strength` | 品牌登场、场景切换、按钮被点亮 |
+| `BigType` | 动态大字（`slam` 砸出 / `mask` 擦出） | `lines` / `mode` / `size` / `from` | 痛点、结论、口号 |
+| `IsometricCards` | 等距视差卡片阵列 | `items` / `columns` / `cardWidth` / `tilt` / `spin` | 功能矩阵、模块全景、定价档位 |
+| `CountUp` | 数字滚动到位 | `value` / `decimals` / `suffix` / `start` | 数据卖点（用户数、准确率、耗时） |
+
+用法：在场景组件里拿 `useCurrentFrame()` 的**场景内帧号**（不是全局帧）喂进去。
+
+```tsx
+const frame = useCurrentFrame();
+const local = frame - sceneRange(timing, "hook-01").start;
+<GradientMesh frame={local} fps={fps} />
+<BigType frame={local} fps={fps} kicker="KICKER" lines={[{ text: "把素材" }, { text: "变成节奏。", accent: true }]} />
+<FilmLook frame={local} grain={0.18} />
+```
+
+`npm run render:effects` 会渲染 `EffectsLab`——六段各 3 秒的样板间，一段一个效果（第 5 段是"左半边有颗粒、
+右半边没有"的对照）。挑效果时先跑它，再决定往片子里拼哪些。样板间不走 `timing.json`，不参与时长与版式校验。
 
 ## 两条硬规矩
 

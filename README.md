@@ -4,7 +4,7 @@
 
 - **谁在执行**：DeepSeek（本机 agent）为主，Cursor / Claude Code 也能跑
 - **跑在哪**：Windows 优先（PowerShell），Linux / macOS 兼容
-- **现在到哪了**：P1 完成——`template/` 骨架能直接出片，15 秒 demo 1080p 渲染 28.6 秒、4K 79 秒，两个成片都过 `check_video.py`
+- **现在到哪了**：P2 完成——六个效果组件 + 18 秒样板间，`npm run render:effects` 39.4 秒出片、过 `check_video.py`；`template/` 骨架能直接出片，15 秒 demo 1080p 渲染 28.6 秒、4K 79 秒
 
 ## 为什么有这个项目
 
@@ -40,8 +40,9 @@ template/              可复制的 Remotion 工程
   src/Root.tsx          1080p / 4K 两套 Composition + layout 路由
   src/lib/timing.ts     秒↔帧换算、节拍相位
   src/lib/anim.ts       ramp / keys / impulse / shake / typed / beatAt + 缓动，全部「帧 → 值」
+  src/effects/          六个效果组件：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动
   src/components/       Backdrop（径向光 + 网格 + 暗角 + 随拍呼吸）
-  src/scenes/           Hook / Showcase / Cta
+  src/scenes/           Hook / Showcase / Cta / EffectsLab（样板间）
 examples/
   card.html             1920×1080 样张，换配色只改 3 个 CSS 变量
   timing.example.json   52 秒 / 60fps / 14 场景的示例分镜（含两段快切蒙太奇）
@@ -85,6 +86,33 @@ out/                   静帧、对比图、成片（不进 git）
 - **4K 用 CSS `zoom`**（`Root.tsx` 里 `zoom = width / WIDTH`），不是把 1080p 放大。裁 4K 静帧看地址栏小字，是按 4K 重新排版渲染的清晰文字；代价是 1px 边框会变 2px。
 - **Remotion 自带编码器**，本机没装 ffmpeg 也能出 mp4；`check_video.py` 也不依赖 ffprobe，直接读 MP4 box。
 
+## P2 验收结果（本机实测）
+
+![六个效果的样板间：六段各 3 秒](docs/img/p2-effects.jpg)
+
+`template/src/effects/` 里六个组件，`npm run render:effects` 出一段 18 秒样板间，每段 3 秒演一个效果（第 5 段是「左半边有颗粒、右半边没有」的对照）：
+
+| 组件 | 做什么 | 配上什么语义才不空转 |
+|---|---|---|
+| `GradientMesh` | 会呼吸的多点渐变底 | 所有片段的底，替代纯黑 |
+| `FilmLook` | 颗粒 + 暗角 | 压住"AI 味"，让画面像拍出来的 |
+| `LightSweep` | 一条斜向亮带扫过 | 品牌登场、场景切换、按钮被点亮 |
+| `BigType` | 动态大字（`slam` 砸出 / `mask` 擦出） | 痛点、结论、口号 |
+| `IsometricCards` | 等距视差卡片阵列 | 功能矩阵、模块全景、定价档位 |
+| `CountUp` | 数字滚动到位 | 数据卖点（用户数、准确率、耗时） |
+
+| 命令 | 结果 |
+|---|---|
+| `npm run typecheck` | exit 0 |
+| `npm run render:effects` | 540 帧 / 1920×1080 / 5.5MB / 39.4 秒 |
+| `python scripts-win\check_video.py template\out\effects.mp4 --duration 18` | 18.00s / 2.55 Mbps / 1920×1080 / 0 ERROR |
+
+三条实现取舍：
+
+- **颗粒不每帧重算**：一张 200×200 的 SVG `feTurbulence` 噪点板，三块轮换（`Math.floor(frame / 2) % 3`）+ 子像素抖动，`mixBlendMode: overlay`。每帧换 seed 要重新栅格化整块区域，4K 下渲染时间翻几倍；实测带颗粒的 540 帧 39.4 秒，摊到每帧只比 P1 不带颗粒的 demo 贵 14%。
+- **效果组件不自己读 `useCurrentFrame`**，`frame` 由场景传进来。这样既能嵌进 `Sequence`，也能在样板间里并排比较、单独抽任意一帧渲染——这是「必须能 seek」那条硬规矩的具体做法。
+- **三处是审图改出来的**（先看截图才发现，靠想象发现不了）：光扫 `strength` 1.25→0.62、带宽 620→480（1.25 时白成一整面墙，不像"扫过"）；等距卡片 `cardWidth` 300→330 加整体 `translate(4%, 6%)`（原来视觉重心偏左上、右下空一大块）；颗粒对照段用 `clipPath: inset(0 50% 0 0)` 只叠左半边，坐标仍按整帧算，不缩放折半——否则两半内容会错位。
+
 ## 怎么用
 
 ```powershell
@@ -110,7 +138,7 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 |---|---|---|
 | P0 | 骨架：精简 AGENTS.md + 4 份 references + Windows 脚本 | ✅ 空项目能出一张 1920×1080 静帧 |
 | P1 | Remotion 骨架 + 15 秒 demo（3 场景） | ✅ `npm run render` 出片，1080p / 4K 都过 `check_video.py` |
-| P2 | effect kit：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 | 6 个 `(frame, fps, opts) => style` 纯函数组件 |
+| P2 | effect kit：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 | ✅ 6 个组件 + 18 秒样板间，`npm run render:effects` 出片过 `check_video.py` |
 | P3 | 校验闸门：assets / stills / sheet / video | 坏资产、压扁截图、缺字能自动报错 |
 | P4 | 声音（可选） | 先做无旁白 + 大字版，TTS 后置 |
 

@@ -69,6 +69,8 @@ npm run studio     # 浏览器实时预览
 ```
 
 时间只改 `timing.json`；场景在 `src/scenes/`；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
+**现成效果先看 `src/effects/`**：渐变底 / 颗粒暗角 / 光扫 / 大字 / 等距卡 / 数字滚动，六个都是 `(frame, fps, opts)` 纯函数组件，直接拼进场景即可；想先看效果跑 `npm run render:effects`（18 秒样板间）。
+要动效先拼现成的，不够再往 `anim.ts` 加纯函数——不要引入会自己跑的动画库。
 **每一帧都必须由 `useCurrentFrame()` 算出来**——纯 CSS animation/transition 渲染器抓不到时间，会渲染成一堆相同的帧。
 
 ## Windows 约定
