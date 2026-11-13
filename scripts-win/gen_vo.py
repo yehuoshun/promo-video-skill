@@ -108,6 +108,47 @@ def trim_silence(path: Path, thresh: float = 0.004, pad: float = 0.05) -> tuple[
     return before, len(trimmed) / float(sr)
 
 
+def normalize_rms(path: Path, target_db: float = -18.0, ceiling_db: float = -1.5) -> float:
+    """把整句拉到目标 RMS，原地重写。返回实际加的增益（dB）。
+
+    SAPI 出来的句子峰值不低、RMS 却只有 -26 dBFS 上下（中文气口多、
+    平均能量被拉低）。直接混进片子会有两个问题：整片响度上不去，
+    以及「人声只比音乐高 5 dB」——手机上听着就是糊的。
+    所以按 RMS 归一，再用 tanh 软限幅把峰值压在 ceiling 以内：
+    时长不变（at/dur 不用改），只动电平。
+    """
+    with wave.open(str(path), "rb") as w:
+        params = w.getparams()
+        x = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float64) / 32768.0
+    if x.size == 0:
+        return 0.0
+    rms = float(np.sqrt(np.mean(np.square(x))))
+    if rms <= 1e-6:
+        return 0.0
+    gain = 10 ** ((target_db - 20 * np.log10(rms)) / 20.0)
+    ceiling = 10 ** (ceiling_db / 20.0)
+    knee = 0.8 * ceiling
+
+    y = x * gain
+    if float(np.max(np.abs(y))) > knee:
+        mag = np.abs(y)
+        y = np.where(mag <= knee, y, np.sign(y) * (knee + (ceiling - knee) * np.tanh((mag - knee) / (ceiling - knee))))
+
+    # 限幅吃掉了一点能量，补回来，但不超过剩余头顶
+    rms2 = float(np.sqrt(np.mean(np.square(y))))
+    if rms2 > 1e-6:
+        headroom = ceiling / max(ceiling, float(np.max(np.abs(y))))
+        extra = min(headroom, 10 ** ((target_db - 20 * np.log10(rms2)) / 20.0))
+        y = y * extra
+        gain *= extra
+
+    out = np.clip(y * 32768.0, -32768, 32767).astype("<i2")
+    with wave.open(str(path), "wb") as w:
+        w.setparams(params)
+        w.writeframes(out.tobytes())
+    return float(20 * np.log10(gain))
+
+
 def synth(text: str, out: Path, voice: str | None, rate: int) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -133,6 +174,7 @@ def main() -> int:
     ap.add_argument("--lead", type=float, default=0.3, help="每句距场景开头留多少秒，默认 0.3")
     ap.add_argument("--gap", type=float, default=0.18, help="同一个场景内两句之间的空白，默认 0.18")
     ap.add_argument("--dry-run", action="store_true", help="只算时间不合成")
+    ap.add_argument("--rms", type=float, default=-18.0, help="旁白归一化目标 RMS（dBFS），默认 -18")
     args = ap.parse_args()
 
     proj = (ROOT / args.project).resolve() if not Path(args.project).is_absolute() else Path(args.project)
@@ -160,6 +202,9 @@ def main() -> int:
                 before, dur = trim_silence(out)
                 if before - dur > 0.15:
                     print(f"  [掐静音] {lid}: {before:.2f}s → {dur:.2f}s（去掉首尾空白 {before - dur:.2f}s）")
+                gain = normalize_rms(out, target_db=args.rms)
+                if not args.dry_run:
+                    print(f"  [归一] {lid}: {gain:+.1f} dB → RMS {args.rms:.0f} dBFS")
             # 时间对齐到整帧：渲染时 Sequence 的 from 是整数帧
             at = round(round(at * fps) / fps, 3)
             lines.append({

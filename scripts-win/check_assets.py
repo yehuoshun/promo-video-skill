@@ -114,7 +114,14 @@ def main() -> int:
         print(f"[ERROR] 目录不存在：{root}", file=sys.stderr)
         return 2
 
-    files = sorted(p for p in root.rglob("*") if p.suffix.lower() in EXTS)
+    files = sorted(
+    p
+    for p in root.rglob("*")
+    if p.suffix.lower() in EXTS
+    # 只查交付素材：node_modules 里的图标、out/ 里的审图拼贴都不是片子素材，
+    # 混进来会让「12 条 WARN」里 8 条是噪音，真正的风险反而被淹没
+    and not {"node_modules", "out", "tmp", ".git"} & {part.lower() for part in p.relative_to(root).parts[:-1]}
+)
     errors: list[str] = []
     warns: list[str] = []
     rows: list[dict] = []
