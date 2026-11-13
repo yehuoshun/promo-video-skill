@@ -216,6 +216,10 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 | `npm run render` | 3.80 MB，音轨 `mp4a 2ch 48kHz` |
 | `scripts-win\verify.cmd -Self` | 7 通过 / 2 警告 / 0 失败 / 0 跳过（11.7 秒） |
 
+![P5 配乐的波形与频谱，红线是按 timing.json 画的拍点](docs/img/p5-bgm.png)
+
+上图是 `check_audio.py --png` 顺手画出来的：上半是波形，下半是频谱，红线按 `timing.json` 的 BPM / offset 画——红线刚好压在每次起音上，就说明音乐踩对了拍。这张图比听十遍都直观：第一版的小节线错开 0.15 秒时，红线正是歪在起音缝里的。
+
 为什么自己合成音乐而不是找素材：**版权**（宣传片是要商用的）和**可复现**（同一份 timing.json 每次生成的 wav 逐字节相同，改完 BPM 重跑一次就好）。`gen_music.py` 读 `timing.json` 的 `beats.bpm/offset` 和 `duration`，A 小调六小节 Am Am F F C G，pad + 贝斯 + 底鼓 + 镲 + 十六分拨弦，单声道 44.1kHz。这是「能用」的占位，不是成品配乐——真做商业片把这一轨换成买来的音乐，其余一个字不用改。
 
 三条实现取舍：
