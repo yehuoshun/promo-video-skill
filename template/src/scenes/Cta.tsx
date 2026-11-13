@@ -19,7 +19,7 @@ export const Cta: React.FC<{ sc: Scene }> = ({ sc }) => {
   const f = (s: number) => s * fps;
 
   // 入场只准用 anim.ts 的四个角色名；分隔线是「生长」不是入场，仍用 ramp
-  const title = enter(frame, 0, "head");
+  const title = enter(frame, 0, "head", { fps, feel: "spring" });
   const lineW = ramp(frame, f(0.3), 26, { ease: (t) => t });
   const url = enter(frame, f(0.5), "quiet");
   const tail = enter(frame, f(0.9), "quiet");

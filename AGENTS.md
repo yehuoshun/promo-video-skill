@@ -75,7 +75,9 @@ scripts-win\verify.cmd .   # 交付前体检：十道闸门一次跑完，有 ER
 **现成效果先看 `src/effects/`**：渐变底 / 颗粒暗角 / 光扫 / 大字 / 等距卡 / 数字滚动，六个都是 `(frame, fps, opts)` 纯函数组件，直接拼进场景即可；想先看效果跑 `npm run render:effects`（18 秒样板间）。
 要动效先拼现成的，不够再往 `anim.ts` 加纯函数——不要引入会自己跑的动画库。
 
-**入场只准用 `enter(frame, at, role)`**，role 四选一：`quiet`（小字 333ms/12px）、`body`（正文卡片 467ms/24px）、`head`（大字 467ms/44px）、`stage`（大容器 667ms/88px）。别在场景里写 `ramp(frame, x, 14, {from: 46})` 这种手算帧数——那正是三个场景节奏各不一样的原因。要「有重量」的落地（卡片、按钮、大标题）传 `{ fps, feel: "spring" }`，文字别用 spring。
+**入场只准用 `enter(frame, at, role)`**，role 四选一：`quiet`（小字 333ms/12px）、`body`（正文卡片 467ms/24px）、`head`（大字 467ms/44px）、`stage`（大容器 667ms/88px）。别在场景里写 `ramp(frame, x, 14, {from: 46})` 这种手算帧数——那正是三个场景节奏各不一样的原因。要「有重量」的落地（卡片、按钮、大标题）传 `{ fps, feel: "spring" }`；正文小字别用，12–24px 的小位移上的过冲肉眼看不见，只会让笔画发虚。
+
+`spring` 默认 `stiffness 170 / damping 13 / mass 1`（ζ=0.50，过冲 12%）。这个 13 是量出来的：damping 20（ζ=0.77）实测逐帧 0 过冲，等于没写；13 在 44px 的大字上有 5px 可见过冲。别凭手感调回去。它必须保持纯函数（给定 frame 从头积分），**不能**改成逐帧累加状态——那样渲染器并行抓帧会算出不同的值。
 **每一帧都必须由 `useCurrentFrame()` 算出来**——纯 CSS animation/transition 渲染器抓不到时间，会渲染成一堆相同的帧。
 
 ## Windows 约定

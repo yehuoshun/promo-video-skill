@@ -104,7 +104,7 @@ export interface SpringOpts {
  * 积分单位是秒，所以 30fps 与 60fps 走的是同一段物理时间，手感一致。
  */
 export function spring(frame: number, at: number, opts: SpringOpts = {}): number {
-  const { stiffness = 170, damping = 20, mass = 1, fps = 30, maxOver = 1.12 } = opts;
+  const { stiffness = 170, damping = 13, mass = 1, fps = 30, maxOver = 1.12 } = opts;
   if (frame <= at) return 0;
   const dt = 1 / fps;
   const steps = Math.round(frame - at);

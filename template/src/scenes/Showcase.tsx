@@ -88,7 +88,7 @@ export const Showcase: React.FC<{ sc: Scene }> = ({ sc }) => {
           <div style={{ padding: "34px 38px 40px" }}>
             <div style={{ display: "flex", gap: 20 }}>
               {cards.map((s, i) => {
-                const card = enter(frame, f(0.35 + i * 0.22), "body");
+                const card = enter(frame, f(0.35 + i * 0.22), "body", { fps, feel: "spring" });
                 const n = keys(
                   frame,
                   [
