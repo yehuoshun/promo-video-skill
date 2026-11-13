@@ -34,7 +34,7 @@
 | 6 | 分镜与场景 | `timing.json`、`src/scenes/` | `check_timing.py` 无 ERROR |
 | 7 | 配音（可选） | 音轨 | 无旁白时跳过，直接进 8 |
 | 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `check_stills.py` 无 ERROR + 校验清单 B 层全勾 |
-| 9 | 渲染交付 | `out/final-4k.mp4` | `check_video.py` 0 ERROR + 校验清单 C 层全勾 |
+| 9 | 渲染交付 | `out/final-4k.mp4` | `scripts-win\verify.cmd .` 0 失败（含 check_video 0 ERROR）+ 校验清单 C 层全勾 |
 | 10 | 改版 | 新版本 | 改动写进 `需求确认.md` 的修改记录 |
 
 ## 四条红线
@@ -66,6 +66,7 @@ npm run render     # 1080p → out/demo-1080p.mp4
 npm run render4k   # 4K    → out/demo-4k.mp4
 npm run still      # 单帧  → out/still.png（调版式时用）
 npm run studio     # 浏览器实时预览
+scripts-win\verify.cmd .   # 交付前体检：六道闸门一次跑完，有 ERROR 就 exit 1
 ```
 
 时间只改 `timing.json`；场景在 `src/scenes/`；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。

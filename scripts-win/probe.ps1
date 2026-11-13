@@ -96,7 +96,9 @@ foreach ($b in @($r.bleed)) {
     if ($Strict) { $errors += $line } else { $warns += $line }
 }
 foreach ($f in @($r.fonts)) {
-    $warns += ("字体缺失：字体栈里的「{0}」本机没有，Chrome 会静默回退成别的字体（渲染出的字不是你设计的那套）" -f $f.family)
+    # probe.js 给的是整条字体栈：只有一个族名都命中不了才报（栈里能命中一个就算正常）
+    $miss = @($f.missing) -join '、'
+    $warns += ("字体全缺：字体栈「{0}」里的 {1} 本机都没有，浏览器用的是默认字体（渲染出的字形不是你设计的那套）" -f "$($f.stack)", $miss)
 }
 
 if ($Json) {

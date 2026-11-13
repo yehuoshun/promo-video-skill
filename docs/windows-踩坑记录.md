@@ -238,3 +238,16 @@ $t = [System.IO.File]::ReadAllText($p, [System.Text.UTF8Encoding]::new($false))
 ```
 
 省事的规矩：**凡是 `.ps1`，改完立刻跑 `scripts-win\fix-encoding.cmd`，别等下一轮**；只有改的正好是 `fix-encoding.ps1` 本身时，才用上面的字节级写法。
+## 17. `C:\Windows\System32\powershell` 是个 0 字节文件，会抢先命中
+
+`verify.ps1` 要调子脚本收输出，写成 `& 'powershell' -File ... | Out-String`，得到这么一句：
+
+```
+无法在管道中间运行文档: C:\Windows\system32\powershell。
+```
+
+原因跟管道语法无关：这台机器的 `C:\Windows\System32\` 下有一个**0 字节、没有扩展名**的 `powershell` 文件（2026-10-25 写入），PowerShell 解析裸命令名时优先命中了它。更迷惑的是 `Get-Command powershell` 返回的 `.Source` 就是 `C:\Windows\system32\powershell` —— 命令解析本身已经指到这个假文件上了。
+
+- `cmd.exe` 不认没有扩展名的文件（只按 PATHEXT 找），所以 `.cmd` 包装器一直没出过事；只有 PowerShell 里互相调用才会踩。
+- 不接管道时它「成功」返回空字符串、不报错，第一眼看不出问题；一接管道就变成上面那句莫名其妙的话。
+- 修法：用当前宿主自己的路径 `$psExe = Join-Path $PSHOME 'powershell.exe'`；`.cmd` 里一律写带扩展名的 `powershell.exe`。`$PSHOME` 就是正在跑的这个 PowerShell（本机 `C:\Windows\System32\WindowsPowerShell\v1.0`），比硬编码路径稳。

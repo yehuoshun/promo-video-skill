@@ -49,12 +49,13 @@
     var res = { vw: vw, vh: vh, clip: [], stretch: [], bleed: [], fonts: [], ms: 0 };
     // 字体按"有文字的元素"收集，而不是只看 body：
     // 单行标语、价格签这类元素经常自己写 font-family，body 的字体栈里看不到。
-    var fontSet = {};
+    // 记整条字体栈，而不是单个族名。"PingFang SC", "Microsoft YaHei", sans-serif
+    // 这种跨平台写法里掉一两个族名是正常的，只要栈里有一个命中就不算问题；
+    // 真正该报警的是整条栈全部没有——那时浏览器用默认字体，你设计的字形全没了。
+    var stackSet = {};
     function collectFonts(str) {
-      String(str || '').split(',').forEach(function (s) {
-        var name = s.trim().replace(/^["']|["']$/g, '');
-        if (name && !/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-.*)$/i.test(name)) fontSet[name] = true;
-      });
+      var v = String(str || '').replace(/\s+/g, ' ').trim();
+      if (v) stackSet[v] = true;
     }
 
     var nodes = document.querySelectorAll('body *');
@@ -125,7 +126,7 @@
     //    字形不同就是不同字体，精确到 1 个像素。
     try {
       collectFonts(getComputedStyle(document.body).fontFamily);
-      var families = Object.keys(fontSet);
+      var stacks = Object.keys(stackSet);
       var MISSING = '"dsh-definitely-missing-family-x9"';
       var TEXT = '宣传片 WMiI1@ Ag';
 
@@ -150,10 +151,26 @@
       }
 
       var baseSig = drawSig(MISSING);
-      for (var f = 0; f < families.length; f++) {
-        if (drawSig('"' + families[f] + '", ' + MISSING) === baseSig) {
-          res.fonts.push({ family: families[f] });
+      var avail = {};
+      function available(name) {
+        var k = name.toLowerCase();
+        if (!(k in avail)) avail[k] = (drawSig('"' + name + '", ' + MISSING) !== baseSig);
+        return avail[k];
+      }
+      var GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|-apple-system|ui-[a-z-]+|inherit|initial|unset|revert)$/i;
+      for (var si = 0; si < stacks.length; si++) {
+        var named = [];
+        var parts = stacks[si].split(',');
+        for (var pi = 0; pi < parts.length; pi++) {
+          var nm = parts[pi].trim().replace(/^["']|["']$/g, '').trim();
+          if (nm && !GENERIC.test(nm)) named.push(nm);
         }
+        if (!named.length) continue;
+        var hit = null;
+        for (var qi = 0; qi < named.length; qi++) {
+          if (available(named[qi])) { hit = named[qi]; break; }
+        }
+        if (!hit) res.fonts.push({ stack: stacks[si], missing: named });
       }
     } catch (e) { /* 字体探测失败不影响其它结论 */ }
 

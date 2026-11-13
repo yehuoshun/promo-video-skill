@@ -4,7 +4,7 @@
 
 - **谁在执行**：DeepSeek（本机 agent）为主，Cursor / Claude Code 也能跑
 - **跑在哪**：Windows 优先（PowerShell），Linux / macOS 兼容
-- **现在到哪了**：P3 完成——三道新闸门（HTML 排版探针、静帧「是否在动」、素材疑似放大）都能自己 fail；加上 P1 的 demo 与 P2 的六个效果组件，从样帧到成片的每一步都有脚本能判真假
+- **现在到哪了**：P4 完成——六道闸门收成一条 `scripts-win\verify.cmd`，一次跑完输出一张表，坏项目 exit 1；P1 的 demo、P2 的六个效果组件、P3 的三道新闸门都在，从样帧到成片的每一步都有脚本能判真假
 
 ## 为什么有这个项目
 
@@ -36,6 +36,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   check_stills.py       静帧体检：相邻截图差值，抓「时间轴在走、画面不动」
   check_video.py        成片体检：分辨率、时长、码率（不依赖 ffmpeg）
   probe.ps1/.cmd/.js    排版探针：headless Chrome 量 DOM，查文字被裁 / 图片变形 / 出画 / 缺字体
+  verify.ps1/.cmd       一键体检：目录/环境/时间轴/素材/静帧/排版/成片/编码 八步汇总成一张表，有 ERROR 就 exit 1
   fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
@@ -159,6 +160,50 @@ out/                   静帧、对比图、成片（不进 git）
 - **字体靠像素比对，不靠宽度**：中文全角，任何字体下 5 个字的宽度都一样，`PingFang SC`、`Noto Sans SC` 和随便编的假名字量出来完全相同（实测都是 480px）。`document.fonts.check()` 更假——本机对所有族名都返回 `true`。
 - **探针只对 HTML 有效**：Remotion 场景是 TSX，量不到 DOM。所以它的位置是「样帧 / 素材页 / 浏览器框里的页面」进 Remotion 之前那道闸；Remotion 自己的画面靠 `check_stills.py` 抓静止帧。
 
+## P4 验收结果（本机实测）
+
+六道闸门各自都能 fail，但它们散在六个脚本里，全靠人记得挨个跑。`verify.cmd` 把它们串成一条命令，输出一张表：哪一步 OK / WARN / FAIL / SKIP、耗时多少、以及失败项原来的那句话。
+
+```powershell
+scripts-win\verify.cmd my-video             # 体检一个项目
+scripts-win\verify.cmd template -Self       # 体检本仓库自己（会跑 examples\*.html）
+scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
+```
+
+八步：目录结构 → 环境（doctor）→ 时间轴（check_timing）→ 素材（check_assets）→ 静帧（check_stills）→ 排版（probe，逐个 HTML）→ 成片（check_video）→ 编码（fix-encoding，只在 -Self 时跑）。
+
+| 命令 | 结果 |
+|---|---|
+| `scripts-win\verify.cmd template` | 3 通过 / 2 警告 / 0 失败 / 2 跳过，3.0s，exit 0（警告 = 本机没装 ffmpeg、15 秒不在 45~60 秒区间） |
+| `scripts-win\verify.cmd -Self` | 5 通过 / 2 警告 / 0 失败 / 1 跳过，5.0s，exit 0 |
+| 故意做坏的项目（静帧重复 + 小图放大 + bad.html + 15 秒） | 2 通过 / 3 警告 / 2 失败，4.1s，**exit 1** |
+
+坏项目里它逐条点名（原样输出）：
+
+```
+[ 4] 素材         WARN    0.5s  1 条警告
+      - 疑似小图放大：shot-fake.png —— 缩半再放大误差 0.03，重复行列 88%，4K 下会糊，换大图或改用矢量/截图
+[ 5] 静帧         FAIL    0.5s  1 个错误
+      - 两张截图完全一样（差 0.00）：f060.png → f140.png —— 动画没生效，或在播同一帧
+[ 6] 排版         FAIL    1.3s  1 张：bad.html
+      错误 bad.html：图片变形：div.stage > img.stretched  渲染 404x404，原图 400x100（差 75%）
+      警告 bad.html：字体全缺：字体栈「"PingFang SC", "Noto Sans SC", sans-serif」里的 PingFang SC、Noto Sans SC 本机都没有，浏览器用的是默认字体
+
+结果：2 通过 / 3 警告 / 2 失败 / 0 跳过（4.1 秒）
+
+失败项：
+  - 静帧：1 个错误
+  - 排版：1 张：bad.html
+```
+
+四条实现取舍：
+
+- **判定规则留在各闸门里，verify 只调度和判词**：一旦把阈值抄进 verify，两边就会悄悄漂移。verify 拿到的是子脚本的 exit code 和输出原文。
+- **WARN 不拦交付，FAIL 才 exit 1**：`-Strict` 把「看情况算不算错」的项（出画、时长）升级成失败。
+- **成片的挑选顺序**：`final-4k` → `final-1080p` → `final` → `demo-4k` → `demo-1080p` → `demo` → `out/` 里最新的 mp4。少了这个顺序，`template/out/effects.mp4` 那条 18 秒样板间会被当成立片，报「时长 18.00s，期望 15.00s」。
+- **`-Self` 会把根切到 `template/`**：在仓库根跑，第一步就会报「缺 timing.json」，把真问题淹掉；同时也排除 `examples\bad*.html` 这类故意做坏的反例，保证自检本身是绿的。
+
+**字体判定的修正**（P3 的一个教训）：原来按「每个族名」判，`"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif` 这种跨平台字体栈掉了一两个族名就告警——可这本来就是正确写法。现在按**整条栈**判：栈里一个族名都命中不了才报（那时浏览器用的是默认字体，字形完全不是你设计的那套）。改完 `examples\card.html` 从 3 WARN 变 0 WARN，`bad.html` 的「字体全缺」仍然抓得住。
 ## 怎么用
 
 ```powershell
@@ -174,6 +219,9 @@ scripts-win\new-project.cmd my-video -Dest ..
 cd ..\my-video
 npm run render       # 1080p，约 30 秒
 npm run render4k     # 4K，约 80 秒
+
+# 4. 交付前体检：一条命令跑完六道闸门，有 ERROR 就 exit 1
+scripts-win\verify.cmd .
 ```
 
 npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](docs/windows-踩坑记录.md) 第 1 条），用 `npm.cmd run render`。
@@ -186,7 +234,8 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 | P1 | Remotion 骨架 + 15 秒 demo（3 场景） | ✅ `npm run render` 出片，1080p / 4K 都过 `check_video.py` |
 | P2 | effect kit：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 | ✅ 6 个组件 + 18 秒样板间，`npm run render:effects` 出片过 `check_video.py` |
 | P3 | 校验闸门：assets / stills / probe / video | ✅ 坏资产、压扁截图、缺字体、静止帧都能自动报错（examples\bad.html 是反例样本，跑它必 exit 1） |
-| P4 | 声音（可选） | 先做无旁白 + 大字版，TTS 后置 |
+| P4 | 一条命令串起六道闸门（verify） | ✅ 正常项目 exit 0、坏项目 exit 1 并点名原因（静帧重复 / 小图放大 / 排版两个 ERROR） |
+| P5 | 声音（可选） | 先做无旁白 + 大字版，TTS 后置 |
 
 ## 授权与致谢
 
