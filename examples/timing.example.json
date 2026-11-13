@@ -1,0 +1,163 @@
+{
+  "_comment": "示例分镜：52 秒、60fps、9 个场景。字段含义见 references/节奏.md。",
+  "fps": 60,
+  "width": 3840,
+  "height": 2160,
+  "duration": 52.0,
+  "pace": {
+    "minShot": 0.65,
+    "holdShot": 1.3,
+    "cardHold": 3.5,
+    "ctaHold": 3.0,
+    "stagger": 0.3,
+    "transition": 0.6
+  },
+  "beats": {
+    "bpm": 104,
+    "offset": 0.42
+  },
+  "scenes": [
+    {
+      "id": "hook-01",
+      "start": 0.0,
+      "end": 3.2,
+      "kind": "hook",
+      "layout": "pain-grid",
+      "onscreen": ["每天手动整理 200 条"],
+      "voice": "你还在手动整理这些表格吗？",
+      "beats": [1.6, 2.6]
+    },
+    {
+      "id": "hook-02",
+      "start": 3.2,
+      "end": 6.0,
+      "kind": "hook",
+      "layout": "pain-grid",
+      "onscreen": ["改一次要 40 分钟"],
+      "voice": "改一次，四十分钟。",
+      "beats": [4.6]
+    },
+    {
+      "id": "info-01",
+      "start": 6.0,
+      "end": 9.8,
+      "kind": "info",
+      "layout": "title-card",
+      "onscreen": ["一句话说清你要什么", "它自己找数据", "三分钟出结果"],
+      "voice": "现在，一句话就行。",
+      "beats": [6.9, 7.9, 8.9]
+    },
+    {
+      "id": "showcase-01",
+      "start": 9.8,
+      "end": 13.0,
+      "kind": "showcase",
+      "layout": "browser-frame",
+      "onscreen": ["真实界面"],
+      "voice": "先把需求写进去。",
+      "beats": [11.2]
+    },
+    {
+      "id": "montage-01",
+      "start": 13.0,
+      "end": 19.6,
+      "kind": "montage",
+      "layout": "montage-grid",
+      "onscreen": ["真实作品"],
+      "voice": "这些，都是它做的。",
+      "beats": [15.4, 17.6],
+      "shots": [0.73, 0.73, 0.73, 0.73, 0.73, 0.73, 0.73, 0.73, 0.76]
+    },
+    {
+      "id": "info-02",
+      "start": 19.6,
+      "end": 23.2,
+      "kind": "info",
+      "layout": "numbers",
+      "onscreen": ["40 分钟 → 3 分钟", "13 倍"],
+      "voice": "四十倍的差距。",
+      "beats": [21.0]
+    },
+    {
+      "id": "showcase-02",
+      "start": 23.2,
+      "end": 26.8,
+      "kind": "showcase",
+      "layout": "mobile-frame",
+      "onscreen": ["手机上也能改"],
+      "voice": "在手机上接着改。",
+      "beats": [25.0]
+    },
+    {
+      "id": "trans-01",
+      "start": 26.8,
+      "end": 27.4,
+      "kind": "transition",
+      "layout": "cut-flash",
+      "onscreen": [],
+      "voice": "",
+      "beats": []
+    },
+    {
+      "id": "info-03",
+      "start": 27.4,
+      "end": 31.4,
+      "kind": "info",
+      "layout": "title-card",
+      "onscreen": ["不用学新工具", "不用改现有流程", "打开就能用"],
+      "voice": "你什么都不用换。",
+      "beats": [28.4, 29.4, 30.4]
+    },
+    {
+      "id": "showcase-03",
+      "start": 31.4,
+      "end": 35.4,
+      "kind": "showcase",
+      "layout": "browser-frame",
+      "onscreen": ["导出即用"],
+      "voice": "导出的就是成品。",
+      "beats": [33.0]
+    },
+    {
+      "id": "montage-02",
+      "start": 35.4,
+      "end": 41.2,
+      "kind": "montage",
+      "layout": "montage-grid",
+      "onscreen": ["8 个真实项目"],
+      "voice": "已经有八支片子在用它。",
+      "beats": [37.0, 39.4],
+      "shots": [0.73, 0.73, 0.73, 0.73, 0.73, 0.73, 0.73, 0.69]
+    },
+    {
+      "id": "info-04",
+      "start": 41.2,
+      "end": 44.6,
+      "kind": "info",
+      "layout": "numbers",
+      "onscreen": ["平均 3.2 分钟出片"],
+      "voice": "平均三分二十秒。",
+      "beats": [42.8]
+    },
+    {
+      "id": "cta-01",
+      "start": 44.6,
+      "end": 48.0,
+      "kind": "cta",
+      "layout": "cta-full",
+      "onscreen": ["promo-video-skill.vercel.app"],
+      "voice": "现在就去试试。",
+      "beats": [46.0]
+    },
+    {
+      "id": "cta-02",
+      "start": 48.0,
+      "end": 52.0,
+      "kind": "cta",
+      "layout": "cta-full",
+      "onscreen": ["免费开始", "promo-video-skill.vercel.app"],
+      "voice": "第一支不要钱。",
+      "beats": [50.0]
+    }
+  ]
+}

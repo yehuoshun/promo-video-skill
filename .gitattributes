@@ -1,0 +1,25 @@
+# 统一换行与编码，避免 Windows 上脚本互相覆盖
+* text=auto
+
+# PowerShell / 批处理必须是 CRLF（cmd.exe 对 LF 的 goto/label 会出错）
+*.ps1  text eol=crlf
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# 其余文本保持 LF
+*.py   text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.ts   text eol=lf
+*.tsx  text eol=lf
+
+# 二进制，不做任何转换
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.mp4  binary
+*.mp3  binary
+*.ttf  binary
+*.ttc  binary
