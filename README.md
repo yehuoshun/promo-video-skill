@@ -59,7 +59,7 @@ examples/               只放自包含的纯文本样张，合计 10 KB（见�
   card.html             1920×1080 样张，换配色只改 3 个 CSS 变量
   bad.html              故意做错的样张（拉伸图 / 裁字 / 出画 / 缺字体），用来验证探针真的会 fail
   timing.example.json   52 秒 / 60fps / 14 场景的示例分镜（含两段快切蒙太奇）
-docs/                  给人看的：借鉴清单、踩坑记录、样帧
+docs/                  给人看的：借鉴清单、踩坑记录、样帧（截图存 WebP，q90）
   pilot/                实拍记录：需求确认单、复盘（闸门在真实规模下的 8 个问题）
 out/                   静帧、对比图、成片（不进 git）
 ```
@@ -70,7 +70,7 @@ out/                   静帧、对比图、成片（不进 git）
 
 ## P0 验收结果（本机实测）
 
-![P0 静帧](docs/img/p0-frame.png)
+![P0 静帧](docs/img/p0-frame.webp)
 
 | 命令 | 结果 |
 |---|---|
@@ -85,7 +85,7 @@ out/                   静帧、对比图、成片（不进 git）
 
 ## P1 验收结果（本机实测）
 
-![P1 十五秒 demo 的展示镜头](docs/img/p1-frame.png)
+![P1 十五秒 demo 的展示镜头](docs/img/p1-frame.webp)
 
 一支 15 秒、3 场景（大字钩子 → 浏览器框数据展示 → 落点网址）的 demo，全部由 `timing.json` 驱动：
 
@@ -106,7 +106,7 @@ out/                   静帧、对比图、成片（不进 git）
 
 ## P2 验收结果（本机实测）
 
-![六个效果的样板间：六段各 3 秒](docs/img/p2-effects.jpg)
+![六个效果的样板间：六段各 3 秒](docs/img/p2-effects.webp)
 
 `template/src/effects/` 里六个组件，`npm run render:effects` 出一段 18 秒样板间，每段 3 秒演一个效果（第 5 段是「左半边有颗粒、右半边没有」的对照）：
 
@@ -231,7 +231,7 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 | `npm run render` | 3.80 MB，音轨 `mp4a 2ch 48kHz` |
 | `scripts-win\verify.cmd -Self` | 7 通过 / 2 警告 / 0 失败 / 0 跳过（11.7 秒） |
 
-![P5 配乐的波形与频谱，红线是按 timing.json 画的拍点](docs/img/p5-bgm.png)
+![P5 配乐的波形与频谱，红线是按 timing.json 画的拍点](docs/img/p5-bgm.webp)
 
 上图是 `check_audio.py --png` 顺手画出来的：上半是波形，下半是频谱，红线按 `timing.json` 的 BPM / offset 画——红线刚好压在每次起音上，就说明音乐踩对了拍。这张图比听十遍都直观：第一版的小节线错开 0.15 秒时，红线正是歪在起音缝里的。
 
@@ -305,7 +305,7 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 | 出片 | 1080p 14.4 MB；4K 33.2 MB（2× 超采样） |
 | `verify.cmd` | 5 通过 / 3 警告 / 0 失败 / 1 跳过 |
 
-![语雀目录树实拍：片子里出现的每一行都是真实导入结果](docs/img/pilot-tree.png)
+![语雀目录树实拍：片子里出现的每一行都是真实导入结果](docs/img/pilot-tree.webp)
 
 真片一上来就把闸门打出七个 ERROR，逐个修完的完整记录在 [docs/pilot/复盘.md](docs/pilot/复盘.md)，四条值得写进规范的：
 
