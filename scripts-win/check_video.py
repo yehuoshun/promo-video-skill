@@ -187,6 +187,8 @@ def main() -> int:
         print(f"分辨率：{dims[0]}x{dims[1]}")
         if exp_w and exp_h and dims == (int(exp_w) * 2, int(exp_h) * 2):
             print(f"  （2× 超采样：{int(exp_w)}x{int(exp_h)} 的 4K 版，按通过处理）")
+        elif exp_w and exp_h and dims == (int(exp_h), int(exp_w)):
+            print(f"  （竖版：{int(exp_w)}x{int(exp_h)} 的 9:16 转置版，按通过处理）")
         else:
             if exp_w and dims[0] != int(exp_w):
                 errors.append(f"宽度 {dims[0]} != 期望 {exp_w}")

@@ -7,6 +7,7 @@ import { Pain } from "./scenes/Pain";
 import { CardsShot, TerminalShot, TreeShot } from "./scenes/ShotScenes";
 import { Soundtrack } from "./Soundtrack";
 import { Subtitles } from "./Subtitles";
+import { Vertical } from "./Vertical";
 import { theme } from "./lib/theme";
 import { HEIGHT, TOTAL_FRAMES, WIDTH, FPS, sceneRange, timing } from "./lib/timing";
 
@@ -44,7 +45,7 @@ const Missing: React.FC<{ layout: string }> = ({ layout }) => (
  * 布局仍按 1920×1080 写，渲染时整块放大到 3840×2160。
  * 好处是只用维护一套尺寸；代价是极细的 1px 边框会变成 2px。
  */
-const Video: React.FC = () => {
+const Video: React.FC<{ showSubs?: boolean }> = ({ showSubs = true }) => {
   const { width } = useVideoConfig();
   const zoom = width / WIDTH;
 
@@ -69,13 +70,23 @@ const Video: React.FC = () => {
           );
         })}
         {/* 字幕放在 zoom 容器里，跟画面一起放大；它只读 timing.json 的 voiceLines */}
-        <Subtitles />
+        {showSubs ? <Subtitles /> : null}
       </div>
       {/* 音轨不进 zoom 容器：声音没有像素尺寸，放外面更贴近「一条独立的轨」 */}
       <Soundtrack />
     </AbsoluteFill>
   );
 };
+
+/**
+ * 竖版壳：竖版自己的字幕在 Vertical 里，正片那套 1920 宽的字幕要关掉，
+ * 否则画面上会出现一大一小两行同样的字。
+ */
+const VerticalWrap: React.FC = () => (
+  <Vertical>
+    <Video showSubs={false} />
+  </Vertical>
+);
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -95,6 +106,15 @@ export const RemotionRoot: React.FC = () => {
         fps={FPS}
         width={3840}
         height={2160}
+      />
+      {/* 竖版：抖音 / 视频号。正片缩到 0.5625 放上部，字幕另起一套大字 */}
+      <Composition
+        id="Vertical"
+        component={VerticalWrap}
+        durationInFrames={TOTAL_FRAMES}
+        fps={FPS}
+        width={1080}
+        height={1920}
       />
       {/* effect kit 的样板间：六段各 3 秒，跟 timing.json 无关 */}
       <Composition
