@@ -1,0 +1,21 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 渲染与中间产物
+out/
+tmp/
+*.mp4
+*.mov
+.DS_Store
+Thumbs.db
+
+# 环境与凭据
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
