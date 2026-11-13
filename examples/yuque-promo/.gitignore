@@ -1,9 +1,0 @@
-node_modules/
-out/
-*.mp4
-*.png.tmp
-.DS_Store
-# 生成物：旁白与配乐由 gen_vo.py / gen_music.py 现做，不进仓库
-public/vo/
-public/bgm.wav
-public/sfx/

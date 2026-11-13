@@ -64,7 +64,7 @@ out/                   静帧、对比图、成片（不进 git）
 ```
 
 > **`examples/` 为什么只剩三个文件**：P7 那支真片的完整工程 `examples/yuque-promo/`（27 个 tsx/ts + 7 张真实截图 2.2 MB + package-lock 161 KB）已移出仓库以控制体积，只保留闸门真正要用的纯文本样张——反例 `bad.html`、对照 `card.html`、示例分镜 `timing.example.json`，三个合计 10 KB，全部自包含、零图片依赖。
-> 取回完整工程：`git checkout HEAD -- examples/yuque-promo`（删除若已提交，换成删除前那个提交的 sha）。只想看结构的话 `git show HEAD:examples/yuque-promo/timing.json` 就够——那是一份 47.5s / 1425 帧的真片时间轴。
+> 取回完整工程：`git checkout 600feb7 -- examples/yuque-promo`（`600feb7` 是它被移出前的最后一个提交）。只想看结构的话 `git show 600feb7:examples/yuque-promo/timing.json` 就够——那是一份 47.5s / 1425 帧的真片时间轴。
 > 顺带一提：这个目录原先看着占空间，其实被 git 跟踪的只有 2.53 MB，真正撑大的是 `yuque-promo/node_modules` 和 `out/`——它们本来就在 `.gitignore` 里，删掉不省仓库体积，下次 `npm i` 还会长回来。
 
 ## P0 验收结果（本机实测）
