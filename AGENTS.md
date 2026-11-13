@@ -42,7 +42,7 @@
 1. **没有审图就没有交付。** 每个场景至少截 2 帧（35% / 85% 处）拼成一张对比图，逐条看。不看就交付等于没做。
 2. **不许编。** 每个数字、每句定语（「纯 SVG」「七种画风」「最近才火」）都要能在原帖或官方页找到原话，出处写进 `调研笔记.md`。找不到就删掉这句话。
 3. **真实素材配额。** 每个功能段落 ≥1 张真实截图，全片 ≥8 张，另有一段 ≥8 张真实作品的快切。AI 生成图只做包装、底纹、转场，不许冒充产品截图。
-4. **`timing.json` 是唯一时间真相。** 画面、字幕、音效、节拍全部从它读，不许在场景组件里写死秒数；字幕只读 `voiceLines`，不另写一份。
+4. **`timing.json` 是唯一时间真相。** 画面、字幕、音效、节拍全部从它读，不许在场景组件里写死秒数；**屏幕上的字也只写在 `scenes[].onscreen`**（按槽位填，`**字**` 是强调色，`@scenes` / `@duration` / `@frames` / `@fps` / `@gates` 渲染时算成真数字），场景组件里不许写死文案；字幕只读 `voiceLines`，不另写一份。
 
 ## 工作目录
 
@@ -66,10 +66,10 @@ npm run render     # 1080p → out/demo-1080p.mp4
 npm run render4k   # 4K    → out/demo-4k.mp4
 npm run still      # 单帧  → out/still.png（调版式时用）
 npm run studio     # 浏览器实时预览
-scripts-win\verify.cmd .   # 交付前体检：八道闸门一次跑完，有 ERROR 就 exit 1
+scripts-win\verify.cmd .   # 交付前体检：十道闸门一次跑完，有 ERROR 就 exit 1
 ```
 
-时间只改 `timing.json`；场景在 `src/scenes/`；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
+时间只改 `timing.json`；**文案也只改它**（`scenes[].onscreen`，槽位见 `src/lib/timing.ts` 的 `OnscreenMap`）；场景在 `src/scenes/`（只管布局和动效，不写字）；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
 **声音也读 `timing.json`**：`audio.bgm/volume/fadeIn/fadeOut/sfx[].at`，组件在 `src/Soundtrack.tsx`。配乐不找素材、用 `scripts-win\gen_music.py` 按 BPM 合成（版权干净、可复现）；旁白用 `scripts-win\say.cmd` 离线合成。
 **旁白与字幕也读它**：文案写在 `scenes[].voice`（`|` 分句），`scripts-win\gen_vo.py` 逐句合成 `public/vo/*.wav` 并把 `at/dur/sha1` 写回 `voiceLines`；`Subtitles.tsx` 只读 `voiceLines`，**别在场景组件里另写一份字幕时间**。`python scripts-win\check_sync.py -Project .` 查三对齐（话没说完画面就切了、两句字幕同屏、CTA 是哑的）。
 **现成效果先看 `src/effects/`**：渐变底 / 颗粒暗角 / 光扫 / 大字 / 等距卡 / 数字滚动，六个都是 `(frame, fps, opts)` 纯函数组件，直接拼进场景即可；想先看效果跑 `npm run render:effects`（18 秒样板间）。

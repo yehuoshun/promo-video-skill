@@ -153,6 +153,31 @@ def check_av_text(timing: dict, proj: Path, errors: list[str], warns: list[str])
     return lines
 
 
+def onscreen_texts(on) -> list[str]:
+    """把 onscreen 摊平成「真的要出现在屏幕上的字符串」。
+
+    兼容旧格式 string[] 与新格式按槽位的对象；stats 的 label / hint 也算屏幕上的字。
+    与 check_timing.py 里的同名函数保持一致。
+    """
+    if isinstance(on, list):
+        return [x for x in on if isinstance(x, str)]
+    if not isinstance(on, dict):
+        return []
+    out: list[str] = []
+    for v in on.values():
+        if isinstance(v, str):
+            out.append(v)
+        elif isinstance(v, list):
+            for item in v:
+                if isinstance(item, str):
+                    out.append(item)
+                elif isinstance(item, dict):
+                    for k in ("label", "hint"):
+                        if isinstance(item.get(k), str):
+                            out.append(item[k])
+    return [x for x in out if x and x.strip()]
+
+
 def check_text_picture(timing: dict, lines: list[dict], errors: list[str], warns: list[str]) -> None:
     """B. 字幕 ↔ 画面：落在自己场景里、互不撞车、不跟画面大字重复。"""
     scenes = {sc["id"]: sc for sc in timing.get("scenes", [])}
@@ -189,9 +214,11 @@ def check_text_picture(timing: dict, lines: list[dict], errors: list[str], warns
         sc = scenes.get(l.get("scene"))
         if not sc:
             continue
-        for on in sc.get("onscreen") or []:
-            if on and norm(on) == norm(l["text"]):
-                warns.append(f"{sc['id']} 的画面大字与字幕完全相同（「{on[:14]}」），删一个")
+        for on in onscreen_texts(sc.get("onscreen")):
+            # ** 只是强调色标记，不念出来，比对时去掉
+            plain = on.replace("**", "")
+            if plain and norm(plain) == norm(l["text"]):
+                warns.append(f"{sc['id']} 的画面大字与字幕完全相同（「{plain[:14]}」），删一个")
 
 
 def check_audio_picture(

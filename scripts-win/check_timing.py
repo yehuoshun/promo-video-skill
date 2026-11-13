@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -35,6 +36,69 @@ MIN_DUR = {
 MAX_DUR = {"transition": 0.6}
 
 KINDS = set(MIN_DUR)
+
+# 屏幕文案里的派生数字，与 template/src/lib/onscreen.ts 的 TOKENS 一一对应
+TOKENS = {"@scenes", "@duration", "@frames", "@fps", "@gates"}
+# 文案槽位，与 template/src/lib/timing.ts 的 OnscreenMap 一一对应
+SLOTS = {"kicker", "lines", "sub", "overline", "title", "url", "caption", "tail", "stats"}
+
+
+def onscreen_texts(on) -> list[str]:
+    """把 onscreen 摊平成「真的要出现在屏幕上的字符串」。
+
+    兼容两种写法：
+    - 旧格式 string[]：一段摘要，渲染器不读（只在本脚本里当行数启发式）
+    - 新格式按槽位的对象：渲染器真读，stats 的 label / hint 也算屏幕上的字
+    与 check_sync.py 里的同名函数保持一致。
+    """
+    if isinstance(on, list):
+        return [x for x in on if isinstance(x, str)]
+    if not isinstance(on, dict):
+        return []
+    out: list[str] = []
+    for v in on.values():
+        if isinstance(v, str):
+            out.append(v)
+        elif isinstance(v, list):
+            for item in v:
+                if isinstance(item, str):
+                    out.append(item)
+                elif isinstance(item, dict):
+                    for k in ("label", "hint"):
+                        if isinstance(item.get(k), str):
+                            out.append(item[k])
+    return [x for x in out if x and x.strip()]
+
+
+def check_onscreen(on, tag: str, errors: list[str], warns: list[str]) -> None:
+    """槽位名、@token、** 配对都得对——这些错了以前是渲染时才发现。"""
+    if on is None or isinstance(on, list):
+        return  # 旧格式放行，渲染器会给出迁移提示
+    if not isinstance(on, dict):
+        errors.append(f"[{tag}] onscreen 既不是数组也不是对象")
+        return
+
+    for k in on:
+        if k not in SLOTS:
+            errors.append(f"[{tag}] onscreen 里的槽位 '{k}' 不认识，可用：{sorted(SLOTS)}")
+
+    for text in onscreen_texts(on):
+        for tok in re.findall(r"@[a-z]+", text):
+            if tok not in TOKENS:
+                errors.append(f"[{tag}] 文案里的 {tok} 不是可用 token，可用：{sorted(TOKENS)}")
+        if text.count("**") % 2:
+            warns.append(f"[{tag}] 文案里的 ** 没配对（「{text[:16]}」），强调色会漏到句尾")
+
+    for j, st in enumerate(on.get("stats") or []):
+        if not isinstance(st, dict):
+            errors.append(f"[{tag}] stats[{j}] 不是对象")
+            continue
+        for k in ("label", "value"):
+            if k not in st:
+                errors.append(f"[{tag}] stats[{j}] 缺少 {k}")
+        v = st.get("value")
+        if isinstance(v, str) and not v.startswith("@"):
+            errors.append(f"[{tag}] stats[{j}].value='{v}' 只能是数字或 @token")
 
 
 def main() -> int:
@@ -91,6 +155,9 @@ def main() -> int:
         if kind not in KINDS:
             errors.append(f"[{tag}] kind='{kind}' 不在 {sorted(KINDS)} 里")
 
+        check_onscreen(sc.get("onscreen"), tag, errors, warns)
+        n_on = len(onscreen_texts(sc.get("onscreen")))
+
         try:
             start, end = float(sc["start"]), float(sc["end"])
         except (KeyError, TypeError, ValueError):
@@ -102,8 +169,8 @@ def main() -> int:
         d = end - start
         if kind in MIN_DUR and d + EPS < MIN_DUR[kind]:
             errors.append(f"[{tag}] {kind} 只有 {d:.2f}s，底线 {MIN_DUR[kind]}s")
-        if kind == "info" and len(sc.get("onscreen") or []) >= 3 and d + EPS < 3.5:
-            errors.append(f"[{tag}] info 有 {len(sc.get('onscreen'))} 行字却只有 {d:.2f}s，卡片底线 3.5s")
+        if kind == "info" and n_on >= 3 and d + EPS < 3.5:
+            errors.append(f"[{tag}] info 有 {n_on} 行字却只有 {d:.2f}s，卡片底线 3.5s")
         if kind == "showcase" and d + EPS < hold:
             errors.append(f"[{tag}] showcase 只有 {d:.2f}s，低于 pace.holdShot={hold}")
         if kind in MAX_DUR and d > MAX_DUR[kind] + EPS:

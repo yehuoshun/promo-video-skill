@@ -3,6 +3,44 @@ import raw from "../../timing.json";
 /** 场景类型，与 scripts-win/check_timing.py 的 MIN_DUR 一一对应 */
 export type Kind = "hook" | "info" | "showcase" | "montage" | "cta" | "transition";
 
+/** 一张统计卡。value 可以是数字，也可以是 @token（见 lib/onscreen.ts） */
+export type StatSlot = {
+  /** 卡片小标题，例如「场景」 */
+  label: string;
+  /** 数字，或 @scenes / @duration / @frames / @fps / @gates 这类派生值 */
+  value: string | number;
+  /** 数字后面的单位，例如「个」「s」 */
+  unit?: string;
+  /** 数字下面的小注，例如「timing.json」 */
+  hint?: string;
+};
+
+/**
+ * 「屏幕上有什么」，按 layout 分槽位。**文案改这里，不要改 TSX。**
+ * 字符串里的 `**...**` 会渲染成强调色（见 lib/rich.tsx），
+ * `@token` 会算成派生数字（见 lib/onscreen.ts）。
+ */
+export type OnscreenMap = {
+  /** 上方小字，例如 promo-video-skill */
+  kicker?: string;
+  /** 主体大字，一行一条 */
+  lines?: string[];
+  /** 大字下面的说明 */
+  sub?: string;
+  /** 标题上方的小标签 */
+  overline?: string;
+  /** 主体标题 */
+  title?: string;
+  /** 地址栏 / 落点网址 */
+  url?: string;
+  /** 图下方的说明 */
+  caption?: string;
+  /** 最下面的尾注 */
+  tail?: string;
+  /** 数据卡片 */
+  stats?: StatSlot[];
+};
+
 export type Scene = {
   id: string;
   kind: Kind;
@@ -10,7 +48,12 @@ export type Scene = {
   layout: string;
   start: number;
   end: number;
-  onscreen?: string[];
+  /**
+   * 屏幕上要出现的字，按 layout 分槽位。
+   * 旧的 `string[]` 摘要格式已被 lib/onscreen.ts 拒绝——渲染时直接报错，
+   * 免得「文案写在 JSON 里、画面却纹丝不动」这种静默失败再发生一次。
+   */
+  onscreen?: OnscreenMap | string[];
   voice?: string;
   beats?: number[];
   shots?: number[];
@@ -23,6 +66,11 @@ export type Timing = {
   height: number;
   duration: number;
   title?: string;
+  /**
+   * 写不进时间轴的片子级事实，供画面上的 @token 取用。
+   * gates = 交付体检的闸门数，改了 scripts-win/verify.ps1 的步数记得同步这里。
+   */
+  facts?: { gates?: number };
   pace?: {
     minShot?: number;
     holdShot?: number;

@@ -1,8 +1,11 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { Backdrop } from "../components/Backdrop";
+import { slots, text } from "../lib/onscreen";
+import { Rich } from "../lib/rich";
 import { theme } from "../lib/theme";
 import { keys, ramp, shake } from "../lib/anim";
+import type { Scene } from "../lib/timing";
 
 /**
  * 开场：大字逐行砸出。
@@ -11,7 +14,8 @@ import { keys, ramp, shake } from "../lib/anim";
  * - 第一行 0.15s 就动，别让开场空着
  * - 强调色只用在一处，别满屏发光
  */
-export const Hook: React.FC = () => {
+export const Hook: React.FC<{ sc: Scene }> = ({ sc }) => {
+  const on = slots(sc);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const f = (s: number) => s * fps;
@@ -68,7 +72,7 @@ export const Hook: React.FC = () => {
               boxShadow: `0 0 18px ${theme.accent}`,
             }}
           />
-          promo-video-skill
+          {text(on.kicker, "kicker")}
         </div>
 
         <div style={{ marginTop: 46 }}>
@@ -82,7 +86,7 @@ export const Hook: React.FC = () => {
               opacity: lineAIn,
             }}
           >
-            把流程写成
+            <Rich text={text(on.lines?.[0], "lines[0]")} />
           </div>
 
           <div
@@ -95,7 +99,7 @@ export const Hook: React.FC = () => {
               opacity: lineBIn,
             }}
           >
-            <span style={{ color: theme.accent }}>能执行</span>的规范。
+            <Rich text={text(on.lines?.[1], "lines[1]")} />
           </div>
         </div>
 
@@ -110,7 +114,7 @@ export const Hook: React.FC = () => {
             opacity: subOp,
           }}
         >
-          不是提示词，是带秒数、带配额、带闸门的施工图。
+          <Rich text={text(on.sub, "sub")} />
         </div>
       </AbsoluteFill>
     </AbsoluteFill>

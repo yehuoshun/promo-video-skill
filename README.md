@@ -4,7 +4,7 @@
 
 - **谁在执行**：DeepSeek（本机 agent）为主，Cursor / Claude Code 也能跑
 - **跑在哪**：Windows 优先（PowerShell），Linux / macOS 兼容
-- **现在到哪了**：P6 完成——音画字三对齐（旁白、字幕、画面讲的是同一件事，且时间上对得上）由数据结构保证、由闸门兜底；八道闸门仍收在一条 `scripts-win\verify.cmd` 里。P1 的 demo、P2 的六个效果组件、P3 的三道新闸门都在，从样帧到成片的每一步都有脚本能判真假
+- **现在到哪了**：P6 完成——音画字三对齐（旁白、字幕、画面讲的是同一件事，且时间上对得上）由数据结构保证、由闸门兜底；十道闸门仍收在一条 `scripts-win\verify.cmd` 里。P1 的 demo、P2 的六个效果组件、P3 的三道新闸门都在，从样帧到成片的每一步都有脚本能判真假
 
 ## 为什么有这个项目
 
@@ -21,7 +21,7 @@
 ## 目录结构
 
 ```
-AGENTS.md              常驻规范，4.7KB（对方是 30KB）
+AGENTS.md              常驻规范，7.3KB（对方是 30KB）
 references/            按需加载的长文档，AI 只在对应阶段读
   需求问询.md           两轮提问清单 + 需求确认模板
   节奏.md               镜头时长底线 + 信息密度 + timing.json 结构
@@ -43,7 +43,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   check_audio.py        混音体检：人声 vs 音乐电平差、响度、短静音
   check_sync.py         音画字对齐：字幕窗、句子是否越场景、音效是否踩拍
   probe.ps1/.cmd/.js    排版探针：headless Chrome 量 DOM，查文字被裁 / 图片变形 / 出画 / 缺字体
-  verify.ps1/.cmd       一键体检：编码/环境/时间轴/素材/配乐/同步/静帧/成片 八道闸门汇总成一张表，有 ERROR 就 exit 1
+  verify.ps1/.cmd       一键体检：目录/环境/时间轴/素材/配乐/同步/静帧/排版/成片/编码 十道闸门汇总成一张表，有 ERROR 就 exit 1
   fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
@@ -54,8 +54,7 @@ template/              可复制的 Remotion 工程
   src/effects/          六个效果组件：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动
   src/components/       Backdrop（径向光 + 网格 + 暗角 + 随拍呼吸）
   src/scenes/           Hook / Showcase / Cta / EffectsLab（样板间）
-examples/
-  yuque-promo/          实拍成片工程（P7）：6 场景 / 47.5s / 真实截图 + 旁白 + 配乐
+examples/               只放自包含的纯文本样张，合计 10 KB（见本节末尾说明）
   card.html             1920×1080 样张，换配色只改 3 个 CSS 变量
   bad.html              故意做错的样张（拉伸图 / 裁字 / 出画 / 缺字体），用来验证探针真的会 fail
   timing.example.json   52 秒 / 60fps / 14 场景的示例分镜（含两段快切蒙太奇）
@@ -63,6 +62,10 @@ docs/                  给人看的：借鉴清单、踩坑记录、样帧
   pilot/                实拍记录：需求确认单、复盘（闸门在真实规模下的 8 个问题）
 out/                   静帧、对比图、成片（不进 git）
 ```
+
+> **`examples/` 为什么只剩三个文件**：P7 那支真片的完整工程 `examples/yuque-promo/`（27 个 tsx/ts + 7 张真实截图 2.2 MB + package-lock 161 KB）已移出仓库以控制体积，只保留闸门真正要用的纯文本样张——反例 `bad.html`、对照 `card.html`、示例分镜 `timing.example.json`，三个合计 10 KB，全部自包含、零图片依赖。
+> 取回完整工程：`git checkout HEAD -- examples/yuque-promo`（删除若已提交，换成删除前那个提交的 sha）。只想看结构的话 `git show HEAD:examples/yuque-promo/timing.json` 就够——那是一份 47.5s / 1425 帧的真片时间轴。
+> 顺带一提：这个目录原先看着占空间，其实被 git 跟踪的只有 2.53 MB，真正撑大的是 `yuque-promo/node_modules` 和 `out/`——它们本来就在 `.gitignore` 里，删掉不省仓库体积，下次 `npm i` 还会长回来。
 
 ## P0 验收结果（本机实测）
 
@@ -179,7 +182,7 @@ scripts-win\verify.cmd template -Self       # 体检本仓库自己（会跑 exa
 scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 ```
 
-八步：目录结构 → 环境（doctor）→ 时间轴（check_timing）→ 素材（check_assets）→ 静帧（check_stills）→ 排版（probe，逐个 HTML）→ 成片（check_video）→ 编码（fix-encoding，只在 -Self 时跑）。
+十步：目录结构 → 环境（doctor）→ 时间轴（check_timing）→ 素材（check_assets）→ 配乐（check_audio）→ 同步（check_sync）→ 静帧（check_stills）→ 排版（probe，逐个 HTML）→ 成片（check_video）→ 编码（fix-encoding，只在 -Self 时跑）。
 
 | 命令 | 结果 |
 |---|---|
@@ -288,7 +291,7 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 音效闪避也在这层：`audio.duck` 默认 8 dB，旁白说话的窗口内背景音乐按帧压到 −8 dB（上下各 0.25s 斜坡），所以「人声比音乐高 8 dB」这条不是靠手调音量撞出来的，是算出来的。
 ## P7 实战：给一个真项目拍一支整片
 
-前六个阶段的对象都是 `template/` 里那个 15 秒的假产品。**闸门在 demo 上全绿，不代表它在真片上成立**——这一阶段把 `code/yuque-import-skill`（GitHub 仓库搬进语雀）真拍了一条，成片工程在 `examples/yuque-promo/`。
+前六个阶段的对象都是 `template/` 里那个 15 秒的假产品。**闸门在 demo 上全绿，不代表它在真片上成立**——这一阶段把 `code/yuque-import-skill`（GitHub 仓库搬进语雀）真拍了一条，成片工程原在 `examples/yuque-promo/`（已移出仓库，取回方式见「仓库结构」一节）。
 
 | 项 | 值 |
 |---|---|
@@ -321,7 +324,7 @@ scripts-win\doctor.cmd
 # 1. 复制骨架建项目：拷 template、改包名、装依赖
 scripts-win\new-project.cmd my-video -Dest ..
 
-# 2. 改 timing.json 定节奏，改 src/scenes/ 做画面（每个场景一个组件）
+# 2. 改 timing.json 定节奏与文案（scenes[].onscreen），src/scenes/ 只管怎么摆
 
 # 3. 配乐（可选）：从 timing.json 的 BPM 生成一条占位 BGM，再用生成器补齐音效
 python ..\scripts-win\gen_music.py timing.json --out public\bgm.wav
@@ -336,11 +339,29 @@ python ..\scripts-win\check_sync.py -Project .      # 说话时有没有字、�
 npm run render       # 1080p，约 30 秒
 npm run render4k     # 4K，约 80 秒
 
-# 6. 交付前体检：一条命令跑完八道闸门，有 ERROR 就 exit 1
+# 6. 交付前体检：一条命令跑完十道闸门，有 ERROR 就 exit 1
 scripts-win\verify.cmd .
 ```
 
 npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](docs/windows-踩坑记录.md) 第 1 条），用 `npm.cmd run render`。
+
+### 文案写在哪
+
+画面的字**全部**来自 `timing.json` 的 `scenes[].onscreen`，TSX 里不写字——它只负责把这些字摆好看。槽位名和 `@token` 都由 `check_timing.py` 验，写错当场报错，不用等到渲染完才发现。
+
+```json
+"onscreen": {
+  "kicker": "promo-video-skill",
+  "lines": ["把流程写成", "**能执行**的规范。"],
+  "sub": "不是提示词，是带秒数、带配额、带闸门的施工图。"
+}
+```
+
+- **槽位**：`kicker` / `lines` / `sub` / `overline` / `title` / `url` / `caption` / `tail` / `stats`。哪个版式读哪几个由场景组件决定；新加版式顺手在 `src/lib/timing.ts` 的 `OnscreenMap` 里补上。
+- **强调色**：`**字**` 之间的部分用强调色（`src/lib/rich.tsx`）。一屏只标一处。
+- **派生数字**：`stats[].value` 可以写 `@scenes` / `@duration` / `@frames` / `@fps` / `@gates`，渲染时算成真值；`hint` 里也能用（`"@fps fps"` → `30 fps`）。手写的数字迟早和 `timing.json` 漂开，所以干脆不让手写。
+- **缺文案**：槽位空着会在画面上印 `〔缺文案：lines[1]〕`——宁可难看，也别静默留白。
+- **旧格式**：`"onscreen": ["一段摘要"]` 这种字符串数组已经不被渲染器接受，改成 `{"lines": [...]}` 就行（摘要格式没人读，改了也不会有任何视觉变化——这正是要废掉它的原因）。
 
 ## 路线图
 
@@ -353,7 +374,7 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 | P4 | 一条命令串起六道闸门（verify） | ✅ 正常项目 exit 0、坏项目 exit 1 并点名原因（静帧重复 / 小图放大 / 排版两个 ERROR） |
 | P5 | 声音：合成配乐 / 音效 / 离线旁白 + 拍点与音轨校验 | ✅ 配乐实测 100.0 BPM、相位偏差 -20 ms；成片带 mp4a 音轨；旁白可离线合成并单独体检 |
 | P6 | 音画字三对齐：逐句旁白 + 字幕同源 + `check_sync.py` | ✅ 四个坏样本全部 exit 1 并点名原因；三轨时间轴图一眼看出错位；顺带修掉 SAPI 尾部静音与半帧拍点 |
-| P7 | 实拍验证：把整条流程用在真项目上，拍一支整片 | ✅ `examples/yuque-promo` 出 1080p/4K 成片（47.5s），`verify` 0 失败；闸门在真实规模下暴露的 8 个问题已回写脚本与规范 |
+| P7 | 实拍验证：把整条流程用在真项目上，拍一支整片 | ✅ `examples/yuque-promo`（已移出仓库）出 1080p/4K 成片（47.5s），`verify` 0 失败；闸门在真实规模下暴露的 8 个问题已回写脚本与规范 |
 
 ## 授权与致谢
 

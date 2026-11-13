@@ -7,13 +7,13 @@ import { Showcase } from "./scenes/Showcase";
 import { Soundtrack } from "./Soundtrack";
 import { Subtitles } from "./Subtitles";
 import { theme } from "./lib/theme";
-import { HEIGHT, TOTAL_FRAMES, WIDTH, FPS, sceneRange, timing } from "./lib/timing";
+import { HEIGHT, TOTAL_FRAMES, WIDTH, FPS, sceneRange, timing, type Scene } from "./lib/timing";
 
 /**
  * layout 名 → 组件。timing.json 里写了不存在的 layout 会直接抛错，
  * 不要静默跳过——静默跳过最后表现为「这十几秒是黑的」，很难查。
  */
-const LAYOUTS: Record<string, React.FC> = {
+const LAYOUTS: Record<string, React.FC<{ sc: Scene }>> = {
   "big-type": Hook,
   "browser-frame": Showcase,
   "cta-full": Cta,
@@ -60,7 +60,7 @@ const Video: React.FC = () => {
           const { from, durationInFrames } = sceneRange(sc);
           return (
             <Sequence key={sc.id} from={from} durationInFrames={durationInFrames} name={sc.id}>
-              {Comp ? <Comp /> : <Missing layout={sc.layout} />}
+              {Comp ? <Comp sc={sc} /> : <Missing layout={sc.layout} />}
             </Sequence>
           );
         })}

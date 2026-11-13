@@ -1,14 +1,11 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { Backdrop } from "../components/Backdrop";
+import { slots, stats, text } from "../lib/onscreen";
+import { Rich } from "../lib/rich";
 import { theme } from "../lib/theme";
 import { easeOutCubic, impulse, keys, ramp } from "../lib/anim";
-
-const STATS = [
-  { label: "场景", value: 14, unit: "个", hint: "timing.json" },
-  { label: "总时长", value: 52, unit: "s", hint: "60fps" },
-  { label: "闸门", value: 4, unit: "道", hint: "会 fail" },
-];
+import type { Scene } from "../lib/timing";
 
 const BARS = [0.34, 0.52, 0.41, 0.68, 0.57, 0.83, 0.62, 0.91];
 
@@ -17,7 +14,9 @@ const BARS = [0.34, 0.52, 0.41, 0.68, 0.57, 0.83, 0.62, 0.91];
  * 每个数字都用 keys() 从 0 走到目标值，速度和卡片入场错开，
  * 这是「数据卖点」最常见的处理（数字涨 = 规模、性能、覆盖）。
  */
-export const Showcase: React.FC = () => {
+export const Showcase: React.FC<{ sc: Scene }> = ({ sc }) => {
+  const on = slots(sc);
+  const cards = stats(sc);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const f = (s: number) => s * fps;
@@ -81,14 +80,14 @@ export const Showcase: React.FC = () => {
                 fontFamily: theme.mono,
               }}
             >
-              timing.json — 唯一的时间真相
+              {text(on.url, "url")}
             </div>
           </div>
 
           {/* 内容区 */}
           <div style={{ padding: "34px 38px 40px" }}>
             <div style={{ display: "flex", gap: 20 }}>
-              {STATS.map((s, i) => {
+              {cards.map((s, i) => {
                 const appear = ramp(frame, f(0.35 + i * 0.22), 16, { from: 26, to: 0 });
                 const show = ramp(frame, f(0.35 + i * 0.22), 14);
                 const n = keys(
@@ -178,7 +177,7 @@ export const Showcase: React.FC = () => {
             paddingLeft: 4,
           }}
         >
-          timing.json 一处改，画面、字幕、节拍全跟着动。
+          <Rich text={text(on.caption, "caption")} />
         </div>
       </AbsoluteFill>
     </AbsoluteFill>

@@ -1,16 +1,19 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { Backdrop } from "../components/Backdrop";
+import { slots, text } from "../lib/onscreen";
+import { Rich } from "../lib/rich";
 import { theme } from "../lib/theme";
 import { beatAt, ramp } from "../lib/anim";
-import { BPM, BEAT_OFFSET } from "../lib/timing";
+import { BPM, BEAT_OFFSET, type Scene } from "../lib/timing";
 
 /**
  * 落点：网址 + 一句话。
  * 规矩：网址停留 ≥3s（这里 4.4s），字号要够大到「手机上也看得清」，
  * 别在这一屏再加第三个信息点。
  */
-export const Cta: React.FC = () => {
+export const Cta: React.FC<{ sc: Scene }> = ({ sc }) => {
+  const on = slots(sc);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const f = (s: number) => s * fps;
@@ -61,7 +64,7 @@ export const Cta: React.FC = () => {
             transform: `translateY(${titleIn}px)`,
           }}
         >
-          现在就能跑
+          {text(on.overline, "overline")}
         </div>
 
         <div
@@ -74,7 +77,7 @@ export const Cta: React.FC = () => {
             transform: `translateY(${titleIn}px)`,
           }}
         >
-          复制骨架，改 <span style={{ color: theme.accent }}>timing.json</span>
+          <Rich text={text(on.title, "title")} />
         </div>
 
         <div
@@ -97,7 +100,7 @@ export const Cta: React.FC = () => {
             opacity: urlOp,
           }}
         >
-          github.com/yehuoshun/promo-video-skill
+          {text(on.url, "url")}
         </div>
 
         <div
@@ -108,7 +111,7 @@ export const Cta: React.FC = () => {
             opacity: tailOp,
           }}
         >
-          MIT · 拿去改 · 记得换掉这支 demo
+          {text(on.tail, "tail")}
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
