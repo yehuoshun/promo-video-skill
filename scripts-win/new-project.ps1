@@ -50,6 +50,17 @@ $json = $pkg | ConvertTo-Json -Depth 20
 
 Write-Host "已创建：$target" -ForegroundColor Green
 
+# template 的 npm scripts 用的是 ..\scripts-win\ 相对路径（lint:timing / stills / check:stills），
+# 项目建到仓库外面就找不到那些脚本了——这里说清楚，别让人以为是 npm 坏了。
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$sw = Join-Path $repoRoot 'scripts-win'
+$inRepo = $target.StartsWith($repoRoot, [StringComparison]::OrdinalIgnoreCase)
+if (-not $inRepo) {
+    Write-Host "注意：项目建在仓库外面（$repoRoot 之外）。" -ForegroundColor Yellow
+    Write-Host "      package.json 里 lint:timing / stills / check:stills 引的是 ..\scripts-win\，" -ForegroundColor Yellow
+    Write-Host "      在这里跑会找不到脚本；下面第 4、6 步给的是仓库里的绝对路径。" -ForegroundColor Yellow
+}
+
 if (-not $SkipInstall) {
     Write-Host "安装依赖（约 2 分钟，首次还要下载 Remotion 的 Headless Shell ~130MB）..." -ForegroundColor Cyan
     Push-Location $target
@@ -63,5 +74,16 @@ if (-not $SkipInstall) {
 Write-Host ""
 Write-Host "下一步：" -ForegroundColor Yellow
 Write-Host "  1. 读 references\需求问询.md，两轮提问，写成 $Name\需求确认.md"
-Write-Host "  2. 改 $Name\timing.json（唯一的时间真相）"
-Write-Host "  3. cd $target; npm run render"
+Write-Host "  2. 改 $Name\timing.json（唯一的时间真相；屏幕上的字写在 scenes[].onscreen）"
+Write-Host "  3. cd $target; npm run studio`t# 边改边看（不出片）"
+if ($inRepo) {
+    Write-Host "  4. npm run stills`t# 按时间轴截到 out\stills\，再 npm run check:stills / npm run sheet 审图"
+    Write-Host "  5. npm run render`t# 1080p 出片；4K 用 npm run render4k"
+    Write-Host "  6. ..\scripts-win\verify.cmd .`t# 交付前体检，十道闸门，有 ERROR 就 exit 1"
+} else {
+    Write-Host "  4. `"$sw\stills.cmd`" .`t# 按时间轴截到 out\stills\"
+    Write-Host "     python `"$sw\check_stills.py`" out\stills`t# 相邻帧差值，0 ERROR 才过"
+    Write-Host "     python `"$sw\sheet.py`" --dir out\stills --cols 3`t# 拼成一张图看"
+    Write-Host "  5. npm run render`t# 1080p 出片；4K 用 npm run render4k"
+    Write-Host "  6. `"$sw\verify.cmd`" .`t# 交付前体检，十道闸门，有 ERROR 就 exit 1"
+}
