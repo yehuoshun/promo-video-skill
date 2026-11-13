@@ -39,6 +39,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   check_timing.py       分镜结构、时长底线、版式重复、layout 是否真注册过、时间轴连续性
   check_assets.py       素材宽度、比例、重名、中文文件名、疑似小图放大
   check_stills.py       静帧体检：相邻截图差值，抓「时间轴在走、画面不动」
+  stills.ps1/.cmd       批量截帧：读 timing.json，每个场景 35% / 85% 处 + 首尾帧 → out/stills/（check_stills 的输入）
   check_video.py        成片体检：分辨率、时长、码率（不依赖 ffmpeg）
   check_audio.py        混音体检：人声 vs 音乐电平差、响度、短静音
   check_sync.py         音画字对齐：字幕窗、句子是否越场景、音效是否踩拍
@@ -339,11 +340,16 @@ python ..\scripts-win\gen_sfx.py --out-dir public\sfx
 python ..\scripts-win\gen_vo.py -Project .
 python ..\scripts-win\check_sync.py -Project .      # 说话时有没有字、字会不会撞、念到哪切了没
 
-# 5. 出片
+# 5. 审图：按时间轴截帧（每场景 35% / 85% + 首尾帧）→ 查相邻帧有没有在动
+npm run stills          # → out\stills\f0000.png …；只截中点加 -- -Mid，长片加 -- -Step 0.5
+npm run check:stills    # 相邻帧差值，< 0.05 说明渲了同一帧，< 0.6 说明那段没动
+npm run sheet           # 拼成 out\sheet.jpg，一张图看完全片
+
+# 6. 出片
 npm run render       # 1080p，约 30 秒
 npm run render4k     # 4K，约 80 秒
 
-# 6. 交付前体检：一条命令跑完十道闸门，有 ERROR 就 exit 1
+# 7. 交付前体检：一条命令跑完十道闸门，有 ERROR 就 exit 1
 scripts-win\verify.cmd .
 ```
 

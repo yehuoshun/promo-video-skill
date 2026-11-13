@@ -33,13 +33,13 @@
 | 5 | 配乐与节拍 | `public/bgm.wav`、`timing.json` 的 `audio` 段 | `check_audio.py public/bgm.wav --timing timing.json` 无 ERROR：BPM 差 ≤2、相位差 ≤60ms |
 | 6 | 分镜与场景 | `timing.json`、`src/scenes/` | `check_timing.py` 无 ERROR + `check_sync.py` 无 ERROR（字幕/旁白/画面同一份时间） |
 | 7 | 配音与字幕（可选） | `public/vo/*.wav`、`voiceLines` | `gen_vo.py` 逐句合成后 `check_sync.py` 无 ERROR：句子不越场景、字幕不撞车；无旁白就跳过，直接进 8 |
-| 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `check_stills.py` 无 ERROR + 校验清单 B 层全勾 |
+| 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `npm run stills` 截、`check_stills.py` 无 ERROR + 校验清单 B 层全勾 |
 | 9 | 渲染交付 | `out/final-4k.mp4` | `scripts-win\verify.cmd .` 0 失败（含 check_video 0 ERROR）+ 校验清单 C 层全勾 |
 | 10 | 改版 | 新版本 | 改动写进 `需求确认.md` 的修改记录 |
 
 ## 四条红线
 
-1. **没有审图就没有交付。** 每个场景至少截 2 帧（35% / 85% 处）拼成一张对比图，逐条看。不看就交付等于没做。
+1. **没有审图就没有交付。** 每个场景至少截 2 帧（35% / 85% 处）拼成一张对比图，逐条看。不看就交付等于没做。（`npm run stills` 就是按这个口径截的，别手敲 `remotion still`——帧号一乱，`check_stills` 比出来的相邻差值全是假的。）
 2. **不许编。** 每个数字、每句定语（「纯 SVG」「七种画风」「最近才火」）都要能在原帖或官方页找到原话，出处写进 `调研笔记.md`。找不到就删掉这句话。
 3. **真实素材配额。** 每个功能段落 ≥1 张真实截图，全片 ≥8 张，另有一段 ≥8 张真实作品的快切。AI 生成图只做包装、底纹、转场，不许冒充产品截图。
 4. **`timing.json` 是唯一时间真相。** 画面、字幕、音效、节拍全部从它读，不许在场景组件里写死秒数；**屏幕上的字也只写在 `scenes[].onscreen`**（按槽位填，`**字**` 是强调色，`@scenes` / `@duration` / `@frames` / `@fps` / `@gates` 渲染时算成真数字），场景组件里不许写死文案；字幕只读 `voiceLines`，不另写一份。
@@ -65,6 +65,9 @@ cd <项目名>
 npm run render     # 1080p → out/demo-1080p.mp4
 npm run render4k   # 4K    → out/demo-4k.mp4
 npm run still      # 单帧  → out/still.png（调版式时用）
+npm run stills     # 批量  → out/stills/（每场景 35%/85% + 首尾帧，-Mid 只截中点，-Step 0.5 按秒抽）
+npm run check:stills   # 相邻帧差值：< 0.05 渲了同一帧，< 0.6 那段没动
+npm run sheet      # 拼图  → out/sheet.jpg，一张图看完全片
 npm run studio     # 浏览器实时预览
 scripts-win\verify.cmd .   # 交付前体检：十道闸门一次跑完，有 ERROR 就 exit 1
 ```
