@@ -9,6 +9,7 @@
 #   scripts-win\verify.cmd .                      # 体检当前目录这个项目
 #   scripts-win\verify.cmd ..\my-video -AllowShort # demo 片短于 45 秒也算过
 #   scripts-win\verify.cmd . -Html 样帧.html       # 指定要探针的样帧
+#   scripts-win\verify.cmd . -Html a.html,b.html  # 多个用逗号隔开（也吃通配符 a\*.html）
 #   scripts-win\verify.cmd -Self                  # 体检工具本身（加编码检查 + examples/ 里的样帧）
 #
 # 参数：
@@ -72,25 +73,45 @@ if ($missingTop.Count) {
     exit 1
 }
 
-# ---------- -Html 允许相对路径 ----------
-# 探针是另起进程跑的，工作目录不确定，相对路径到那边就找不到文件，
-# 报出来的却是「找不到 HTML」这种离原因很远的错。这里先转成绝对路径。
+# ---------- -Html 允许相对路径、逗号列表、通配符 ----------
+# 两件事常踩：
+# 1) 探针是另起进程跑的，工作目录不确定，相对路径到那边就找不到文件，
+#    报出来的却是「找不到 HTML」这种离原因很远的错。这里先转成绝对路径。
+# 2) 从 verify.cmd 调用走的是 powershell -File，cmd.exe 把 a.html,b.html 当成
+#    一个字符串塞进来，[string[]] 参数不会替你按逗号拆 —— 于是它去查一个叫
+#    「a.html,b.html」的文件，报「找不到 HTML」。所以这里自己拆，顺带展开通配符。
 if ($Html.Count) {
-    $resolvedHtml = @()
+    $want = @()
     foreach ($h in $Html) {
+        foreach ($piece in ($h -split ',')) {
+            $t = $piece.Trim()
+            if ($t) { $want += $t }
+        }
+    }
+    if (-not $want.Count) { $want = @() }
+    $resolvedHtml = @()
+    foreach ($h in $want) {
         $tries = @($h)
         if (-not [System.IO.Path]::IsPathRooted($h)) {
             $tries += (Join-Path $root $h)
             $tries += (Join-Path $PWD.Path $h)
         }
-        $hit = @($tries | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+        $hit = @()
+        foreach ($c in $tries) {
+            if ($c -match '[\*\?]') {
+                $hit = @(Get-ChildItem -Path $c -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+            } else {
+                $hit = @($c | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+            }
+            if ($hit.Count) { break }
+        }
         if (-not $hit) {
             Write-Host ''
             Write-Host ("找不到 HTML：$h") -ForegroundColor Red
             Write-Host ("试过：" + ($tries -join '  ')) -ForegroundColor DarkGray
             exit 1
         }
-        $resolvedHtml += (Resolve-Path -LiteralPath $hit[0]).Path
+        foreach ($one in $hit) { $resolvedHtml += (Resolve-Path -LiteralPath $one).Path }
     }
     $Html = $resolvedHtml
 }
