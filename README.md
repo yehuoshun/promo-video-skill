@@ -36,7 +36,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   gen_music.py          按 timing.json 的 BPM 生成占位配乐（四段结构 + 落拍重音）
   gen_sfx.py            生成 whoosh / click / riser 等音效，落点来自 timing.json
   gen_vo.py             逐句合成旁白、掐静音、RMS 归一化、时长写回 voiceLines
-  check_timing.py       分镜结构、时长底线、版式重复、时间轴连续性
+  check_timing.py       分镜结构、时长底线、版式重复、layout 是否真注册过、时间轴连续性
   check_assets.py       素材宽度、比例、重名、中文文件名、疑似小图放大
   check_stills.py       静帧体检：相邻截图差值，抓「时间轴在走、画面不动」
   check_video.py        成片体检：分辨率、时长、码率（不依赖 ffmpeg）
@@ -347,7 +347,9 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 
 ### 文案写在哪
 
-画面的字**全部**来自 `timing.json` 的 `scenes[].onscreen`，TSX 里不写字——它只负责把这些字摆好看。槽位名和 `@token` 都由 `check_timing.py` 验，写错当场报错，不用等到渲染完才发现。
+画面的字**全部**来自 `timing.json` 的 `scenes[].onscreen`，TSX 里不写字——它只负责把这些字摆好看。槽位名、`@token`、`layout` 名都由 `check_timing.py` 验，写错当场报错，不用等到渲染完才发现。
+
+`layout` 必须真在 `src/Root.tsx` 的 `LAYOUTS` 里注册过（脚本直接读那份注册表，不维护第二份手抄清单）。写错一个字母——`big-type` 写成 `big_type`——以前十道闸门全绿，渲染出来是一块红底 `Missing` 屏，只能靠肉眼看片才发现；现在直接 ERROR 并列出可用值。顺带两条：注册了却没有场景用到的 layout 报 WARN（多半是改名后的残留）；`onscreen` 填了某个槽位、但该 layout 的组件里根本没引用这个槽位也报 WARN（那段字永远不会出现在画面上）。工程根不是 `timing.json` 所在目录时用 `--root` 指；样例分镜放在仓库外、没有 `src/Root.tsx` 时这一项打印 `[跳过]`，不误报。
 
 ```json
 "onscreen": {

@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-"""分镜时间表校验：结构、时长底线、版式重复、CTA 存在性。0 ERROR 才算过。
+"""分镜时间表校验：结构、时长底线、版式重复、layout 注册、CTA 存在性。0 ERROR 才算过。
 
 用法：
     python scripts-win/check_timing.py timing.json
     python scripts-win/check_timing.py timing.json --allow-duration
+    python scripts-win/check_timing.py timing.json --root <工程根目录>
 """
 
 from __future__ import annotations
@@ -101,10 +102,99 @@ def check_onscreen(on, tag: str, errors: list[str], warns: list[str]) -> None:
             errors.append(f"[{tag}] stats[{j}].value='{v}' 只能是数字或 @token")
 
 
+# ---- layout 注册表 ----
+# timing.json 里把 layout 名写错一个字母，十道闸门全绿，渲染出来却是一块红底
+# 「layout="xxx" 没有对应组件」的 Missing 屏——这是最容易漏的一类错。
+# 所以直接读 src/Root.tsx 的 LAYOUTS 键集合来对，而不是维护第二份手抄清单。
+LAYOUTS_RE = re.compile(r"const\s+LAYOUTS\b[^=]*=\s*\{(.*?)\n\};", re.S)
+IMPORT_RE = re.compile(r"import\s*\{([^}]*)\}\s*from\s*[\"'](\.[^\"']+)[\"']", re.S)
+
+
+def load_layouts(root: Path) -> tuple[dict[str, str] | None, dict[str, str]]:
+    """读 <root>/src/Root.tsx，返回 (layout→组件名, 组件名→组件源码)。
+
+    找不到 Root.tsx（比如 examples/ 下的样例分镜）时返回 (None, {})，
+    调用方据此跳过这一项，而不是误报。
+    """
+    root_file = root / "src" / "Root.tsx"
+    if not root_file.exists():
+        return None, {}
+    try:
+        text = root_file.read_text(encoding="utf-8")
+    except OSError:
+        return None, {}
+    m = LAYOUTS_RE.search(text)
+    if not m:
+        return None, {}
+
+    registered = {
+        name: comp
+        for name, comp in re.findall(r"[\"']([^\"']+)[\"']\s*:\s*([A-Za-z_$][\w$]*)", m.group(1))
+    }
+
+    # 组件名 → 源码：用来查「这个 layout 到底读不读某个槽位」
+    sources: dict[str, str] = {}
+    for names, rel in IMPORT_RE.findall(text):
+        for raw in names.split(","):
+            comp = raw.split(" as ")[-1].strip()
+            if not comp:
+                continue
+            base = root / "src" / rel.lstrip("./")
+            for cand in (base.with_suffix(".tsx"), base.with_suffix(".ts"), base / "index.tsx"):
+                if cand.exists():
+                    try:
+                        sources[comp] = cand.read_text(encoding="utf-8")
+                    except OSError:
+                        pass
+                    break
+    return registered, sources
+
+
+def check_layout(
+    layout,
+    on,
+    tag: str,
+    registered: dict[str, str] | None,
+    sources: dict[str, str],
+    errors: list[str],
+    warns: list[str],
+) -> None:
+    """layout 得真注册过；onscreen 填了的槽位，这个 layout 得真读。"""
+    if registered is None:
+        return
+
+    if layout not in registered:
+        errors.append(
+            f"[{tag}] layout='{layout}' 没在 src/Root.tsx 的 LAYOUTS 里注册，"
+            f"渲染出来是一块红底 Missing 屏。可用：{sorted(registered)}"
+        )
+        return
+
+    if not isinstance(on, dict):
+        return
+    comp = registered[layout]
+    src = sources.get(comp)
+    if not src:
+        return
+    for slot in on:
+        if slot not in SLOTS:
+            continue  # 槽位名不认识已由 check_onscreen 报 ERROR，别重复报
+        if not re.search(rf"\b{re.escape(slot)}\b", src):
+            warns.append(
+                f"[{tag}] onscreen 填了 '{slot}'，但 layout '{layout}'（{comp}）里没引用这个槽位，"
+                f"这段字永远不会出现在画面上"
+            )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="校验 timing.json")
     ap.add_argument("file", nargs="?", default="timing.json")
     ap.add_argument("--allow-duration", action="store_true", help="不检查总时长是否在 45~60 秒")
+    ap.add_argument(
+        "--root",
+        default=None,
+        help="工程根目录（含 src/Root.tsx），默认取 timing.json 所在目录",
+    )
     args = ap.parse_args()
 
     path = Path(args.file)
@@ -120,6 +210,8 @@ def main() -> int:
 
     errors: list[str] = []
     warns: list[str] = []
+    root = Path(args.root) if args.root else path.resolve().parent
+    registered, sources = load_layouts(root)
 
     for key in ("fps", "duration", "scenes"):
         if key not in data:
@@ -156,6 +248,7 @@ def main() -> int:
             errors.append(f"[{tag}] kind='{kind}' 不在 {sorted(KINDS)} 里")
 
         check_onscreen(sc.get("onscreen"), tag, errors, warns)
+        check_layout(sc.get("layout"), sc.get("onscreen"), tag, registered, sources, errors, warns)
         n_on = len(onscreen_texts(sc.get("onscreen")))
 
         try:
@@ -226,6 +319,12 @@ def main() -> int:
     if prev_end is not None and abs(prev_end - duration) > 0.05:
         errors.append(f"场景总时长 {prev_end:.2f}s 与 duration {duration:.2f}s 不一致")
 
+    # ---- 注册了却没人用的 layout ----
+    if registered is not None:
+        used = {sc.get("layout") for sc in scenes}
+        for name in sorted(set(registered) - used):
+            warns.append(f"src/Root.tsx 注册了 layout '{name}'，但 timing.json 里没有场景用它")
+
     # ---- 版式连用 ----
     run_layout, run_len = None, 0
     for sc in scenes:
@@ -262,6 +361,8 @@ def main() -> int:
     for sc in scenes:
         d = float(sc["end"]) - float(sc["start"])
         print(f"{sc.get('id', ''):<16}{sc.get('kind', ''):<11}{sc.get('layout', ''):<18}{float(sc['start']):>7.2f}{float(sc['end']):>8.2f}{d:>7.2f}")
+    if registered is None:
+        print(f"\n[跳过] 没找到 {root / 'src' / 'Root.tsx'}，layout 注册未校验")
 
     if warns:
         print(f"\n[WARN] {len(warns)} 条")
