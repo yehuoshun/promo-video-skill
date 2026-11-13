@@ -1,0 +1,25 @@
+{
+  "name": "promo-video-template",
+  "private": true,
+  "version": "0.1.0",
+  "description": "宣传片 Remotion 骨架：改 timing.json 与 src/scenes 就能出片",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "still": "remotion still src/index.ts Main out/still.png --frame=45",
+    "render": "remotion render src/index.ts Main out/demo-1080p.mp4 --codec=h264 --crf=18",
+    "render4k": "remotion render src/index.ts Main4k out/demo-4k.mp4 --codec=h264 --crf=16",
+    "typecheck": "tsc --noEmit",
+    "lint:timing": "python ../scripts-win/check_timing.py timing.json --allow-duration"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.543",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "remotion": "4.0.543"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.9.0"
+  }
+}

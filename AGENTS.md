@@ -28,13 +28,13 @@
 | 0 | 环境体检 | — | `scripts-win/doctor.ps1` 无 FAIL |
 | 1 | 预调研 | `调研笔记.md` | 一句话定位 + 3 条卖点 + 至少 8 个可截图页面/作品，每条带 URL |
 | 2 | 需求问询 ★人 | `需求确认.md`、样帧 | 用户回复「开始」 |
-| 3 | 建工程 | 项目骨架 | `doctor.ps1` 通过、空场景能渲染 |
+| 3 | 建工程 | 项目骨架 | `scripts-win\new-project.cmd` 建好、`npm run render` 出得片 |
 | 4 | 素材盘点 | `public/`、素材清单 | 真实截图 ≥8 张且源图宽 ≥ 显示宽×2 |
 | 5 | 配乐与节拍 | `public/bgm.mp3`、bpm/offset | 有可用的 beat 网格（手标即可） |
 | 6 | 分镜与场景 | `timing.json`、`src/scenes/` | `check_timing.py` 无 ERROR |
 | 7 | 配音（可选） | 音轨 | 无旁白时跳过，直接进 8 |
 | 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | 校验清单 B 层全勾 |
-| 9 | 渲染交付 | `out/final-4k.mp4` | 校验清单 C 层全勾 |
+| 9 | 渲染交付 | `out/final-4k.mp4` | `check_video.py` 0 ERROR + 校验清单 C 层全勾 |
 | 10 | 改版 | 新版本 | 改动写进 `需求确认.md` 的修改记录 |
 
 ## 四条红线
@@ -55,6 +55,21 @@
   src/scenes/      每个场景一个组件
   out/             静帧、对比图、成片（不进 git）
 ```
+
+## 工程与命令
+
+新项目：`scripts-win\new-project.cmd <项目名>`（复制 `template/`、装依赖，约 2 分钟）。
+
+```powershell
+cd <项目名>
+npm run render     # 1080p → out/demo-1080p.mp4
+npm run render4k   # 4K    → out/demo-4k.mp4
+npm run still      # 单帧  → out/still.png（调版式时用）
+npm run studio     # 浏览器实时预览
+```
+
+时间只改 `timing.json`；场景在 `src/scenes/`；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
+**每一帧都必须由 `useCurrentFrame()` 算出来**——纯 CSS animation/transition 渲染器抓不到时间，会渲染成一堆相同的帧。
 
 ## Windows 约定
 

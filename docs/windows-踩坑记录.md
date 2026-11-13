@@ -135,3 +135,48 @@ if sys.platform == "win32":
 ## 9. 一次体检就能发现大部分环境问题
 
 `scripts-win\doctor.cmd` 会把 Node / npm / Python / Pillow / Chrome / git / 中文字体 / ffmpeg / 磁盘剩余一次列清并给出修复建议。**先跑它，再排错**，能省掉一半「为什么命令找不到」的来回。
+
+## 10. 执行策略不只管 `.ps1`，连 `npm` 一起拦
+
+第 1 条说过 `.ps1` 会被 `Restricted` 挡住，加 `.cmd` 包装解决。**同样的错误也会出现在 `npm` 上**：
+
+```
+npm : 无法加载文件 C:\Program Files\nodejs\npm.ps1，因为在此系统上禁止运行脚本。
+```
+
+PowerShell 找 `npm` 时优先匹配 `npm.ps1`，于是又被拦。两条路：
+
+- 命令里直接写 `npm.cmd run render`；
+- 或用 node 自带的完整路径，例如 `E:\DevelopmentEnvironment\nvm\nodejs\npm.cmd run render`（本机上 nvm 装的 node 在这里）。
+
+## 11. Remotion 第一次跑会自己下载浏览器和编码器
+
+- 第一次 `remotion still` / `render` 会下载 Headless Shell（本机实测 **131.1MB**），之后再跑才快；
+- 它**自带 ffmpeg 编码**，本机没装 ffmpeg 也能出 mp4——`doctor.cmd` 报 ffmpeg WARN 不影响出片，只影响混音、抽帧、换音轨；
+- `npm install` 时 esbuild 的 postinstall 可能被 `allowScripts` 拦下并告警，实测不影响渲染，不必处理。
+
+## 12. 4K 用 `zoom`，不要用 `transform: scale()`
+
+`transform: scale(2)` 是把 1080p 的画面整体放大，文字边缘会糊、细线会虚；CSS `zoom` 会重新布局并按新分辨率重新栅格化，小字是真的清晰（代价：1px 边框变成 2px，需要的话用 `0.5px` 或改细）。
+
+本项目的做法是在 `template/src/Root.tsx` 里 `const zoom = width / WIDTH`，把整个舞台包一层 `zoom`，场景组件只写 1920×1080 一套坐标。校验方式是裁 4K 静帧里最小的那行字看边缘，而不是看整体缩放比。
+
+## 13. `.cmd` 换行必须是 CRLF，否则 cmd.exe 会错行执行
+
+这条最阴。`.cmd` / `.bat` 用 LF（Unix 换行）写出来，`cmd.exe` 照样能跑、退出码还是 0，但会莫名其妙多出几行 stderr：
+
+```
+The system cannot find the drive specified.
+The system cannot find the path specified.
+```
+
+实测过程：直接 `Start-Process powershell -File new-project.ps1` 没有这些行；套一层 `.cmd` 就有了；把 `.cmd` 单行拆开逐条试，`robocopy` 和 `powershell` 都是干净的。最后查换行——三个 `.cmd` 全是裸 LF（`CRLF=0 裸LF=5`）。原因是 cmd.exe 按字节读批处理，LF 结尾时会把 `.cmd` 里的注释和下一行拼在一起解析，拼出来的碎片被当成命令执行（那些碎片里有 `E:\...` 的路径片段，于是报"找不到指定的驱动器"）。
+
+修法（PowerShell）：
+
+```powershell
+$t = [System.IO.File]::ReadAllText($f) -replace "`r`n", "`n" -replace "`n", "`r`n"
+[System.IO.File]::WriteAllText($f, $t, (New-Object System.Text.UTF8Encoding($false)))
+```
+
+仓库里 `.gitattributes` 已经把 `*.cmd`、`*.ps1` 设为 `eol=crlf`，但**那只管 git 检出**；新写的 `.cmd` 落盘时就得是 CRLF，否则本地先踩一遍。

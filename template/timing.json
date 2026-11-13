@@ -1,0 +1,51 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "duration": 15,
+  "title": "promo-video-skill · 15 秒 demo",
+  "pace": {
+    "minShot": 0.65,
+    "holdShot": 1.3,
+    "cardHold": 3.5,
+    "ctaHold": 3,
+    "stagger": 0.3,
+    "transition": 0.6
+  },
+  "beats": { "bpm": 100, "offset": 0.15 },
+  "scenes": [
+    {
+      "id": "hook-01",
+      "kind": "hook",
+      "layout": "big-type",
+      "start": 0,
+      "end": 4.6,
+      "onscreen": ["把流程写成规范", "不是提示词，是施工图"],
+      "voice": "",
+      "beats": [0.15, 0.75, 1.35, 1.95, 2.55],
+      "notes": "开场：大字逐行砸出，第二行用重色强调"
+    },
+    {
+      "id": "showcase-01",
+      "kind": "showcase",
+      "layout": "browser-frame",
+      "start": 4.6,
+      "end": 10.6,
+      "onscreen": ["timing.json 一处改，画面字幕节拍全跟着动"],
+      "voice": "",
+      "beats": [4.75, 5.35, 5.95, 6.55, 7.15, 7.75],
+      "notes": "浏览器框推入 + 三个数字滚动增长"
+    },
+    {
+      "id": "cta-01",
+      "kind": "cta",
+      "layout": "cta-full",
+      "start": 10.6,
+      "end": 15,
+      "onscreen": ["github.com/yehuoshun/promo-video-skill", "MIT · 拿去改"],
+      "voice": "",
+      "beats": [10.75, 11.35, 11.95, 12.55],
+      "notes": "网址落地，光晕呼吸，停留 4.4 秒"
+    }
+  ]
+}
