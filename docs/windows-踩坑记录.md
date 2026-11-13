@@ -251,3 +251,36 @@ $t = [System.IO.File]::ReadAllText($p, [System.Text.UTF8Encoding]::new($false))
 - `cmd.exe` 不认没有扩展名的文件（只按 PATHEXT 找），所以 `.cmd` 包装器一直没出过事；只有 PowerShell 里互相调用才会踩。
 - 不接管道时它「成功」返回空字符串、不报错，第一眼看不出问题；一接管道就变成上面那句莫名其妙的话。
 - 修法：用当前宿主自己的路径 `$psExe = Join-Path $PSHOME 'powershell.exe'`；`.cmd` 里一律写带扩展名的 `powershell.exe`。`$PSHOME` 就是正在跑的这个 PowerShell（本机 `C:\Windows\System32\WindowsPowerShell\v1.0`），比硬编码路径稳。
+## 18. 生成的音乐「听着对」，拍点却差 150 ms
+
+给 demo 合成配乐时踩了两个连着的坑，都属于「用耳朵听不出来、必须拿脚本量」的那类。
+
+**坑一：小节线没落在拍网格上。** 第一版按 `t0 = i * bar` 铺和声（0、2.4、4.8…），而 `timing.json` 的拍网格是 `offset + k * beat`（从 0.15s 起算）。两者差 0.15 秒：底鼓踩在拍上，pad 和贝斯却在半拍外换和弦，整条音乐听起来「一直差半口气」。改成 `t0 = offset + i * bar`，所有「第几小节」的判定也跟着写 `int(max(0.0, tt - offset) // bar)`。**规则：只要 timing.json 有 offset，任何按小节/按拍的排布都从 offset 起算，不要从 0 起算。**
+
+**坑二：拍点检测被开头的淡入骗了。** `check_audio.py` 第一版用全频段短时能量找起音，测出来相位 0.00s（真值 0.15s）——开头 0.12s 的淡入是全曲起音最猛的地方，任何一拍的底鼓都比不过它。两个修法一起上：
+
+- 只取 40~120 Hz（底鼓频段）做 FFT 带通，pad、镲、拨弦都在这个频段之外；
+- 评分时跳过前 0.2 秒（`detect_grid(env, hop, skip=0.2)`）。
+
+改完同一份音频立刻测出 0.13s / 100.0 BPM。判据也没写成绝对相等：BPM 差 >2、相位差 >60 ms 才 ERROR，给「一帧之内的渲染误差」留余量。
+
+## 19. 读 WAV 头算时长，别写死 data 块的偏移
+
+`say.ps1` 合成旁白后想报个时长，第一版手写偏移：`Position=40; ReadInt32()` 当 data 长度。结果打印出「时长：-37,760.65s」。
+
+WAV 头不是固定 44 字节：`fmt ` 之后可能还有 `fact`、`LIST` 等块，写死偏移就会把别的字段当长度读。改成按 chunk 走：
+
+```powershell
+$pos = 12
+while ($pos + 8 -le $bytes.Length) {
+    $id = [System.Text.Encoding]::ASCII.GetString($bytes, $pos, 4)
+    $sz = [BitConverter]::ToInt32($bytes, $pos + 4)
+    if ($id -eq 'fmt ') { $ch = [BitConverter]::ToInt16($bytes, $pos + 10); $sr = [BitConverter]::ToInt32($bytes, $pos + 12) }
+    elseif ($id -eq 'data') { ...; break }
+    $pos += 8 + $sz + ($sz % 2)   # 块按偶数对齐
+}
+```
+
+顺带记两个 SAPI 的事实：`Microsoft Huihui Desktop` 输出的是 **22.05 kHz 单声道 16-bit**（不是 44.1k），`Rate` 的有效范围 -10~10，中文宣传片旁白用 -2 ~ 0 比较稳。
+
+另外，旁白拿去做 `check_audio.py` 时要加 `--narration`：说话本来就有停顿，按音乐的阈值（>1.0s 无声判 ERROR）量旁白，一句一停就全是误报。旁白模式只抓「单段空白 ≥1.6s」和「整段一半以上是静音」。

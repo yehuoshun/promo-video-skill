@@ -4,6 +4,7 @@ import { Cta } from "./scenes/Cta";
 import { EffectsLab } from "./scenes/EffectsLab";
 import { Hook } from "./scenes/Hook";
 import { Showcase } from "./scenes/Showcase";
+import { Soundtrack } from "./Soundtrack";
 import { theme } from "./lib/theme";
 import { HEIGHT, TOTAL_FRAMES, WIDTH, FPS, sceneRange, timing } from "./lib/timing";
 
@@ -63,6 +64,8 @@ const Video: React.FC = () => {
           );
         })}
       </div>
+      {/* 音轨不进 zoom 容器：声音没有像素尺寸，放外面更贴近「一条独立的轨」 */}
+      <Soundtrack />
     </AbsoluteFill>
   );
 };

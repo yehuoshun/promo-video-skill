@@ -1,6 +1,6 @@
 ﻿# 一把过：把散着的检查串成一条命令，交付前只跑这一个。
 #
-# 为什么要有它：到 P3 为止已经有六个闸门（环境、时间轴、素材、静帧、排版、成片），
+# 为什么要有它：到 P5 为止已经有七个闸门（环境、时间轴、素材、配乐、静帧、排版、成片），
 # 但它们分散在 docs 和 AGENTS 的阶段表里，靠人记住「这一步该跑哪三个」。
 # 忘一条就等于没有——所以合成一条，一条命令出结论，任一 ERROR 就 exit 1。
 #
@@ -234,7 +234,46 @@ if (-not (Test-Path -LiteralPath $publicDir)) {
     Report '素材' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
 }
 
-# ---------- 5. 静帧 ----------
+# ---------- 5. 配乐 ----------
+
+# 只查「配乐本身对不对」：时长、电平、拍点是否落在 timing.json 声明的网格上。
+# 成片里到底有没有声音，是第 7 步 check_video.py 的事（它读 MP4 的 soun 轨）。
+$bgmPath = $null
+$bgmName = 'bgm.wav'
+if (Test-Path -LiteralPath $timingPath) {
+    try {
+        $tj = Get-Content -LiteralPath $timingPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($tj.audio -and $tj.audio.bgm) { $bgmName = [string]$tj.audio.bgm }
+    } catch { }
+}
+if (Test-Path -LiteralPath $publicDir) {
+    $try = Join-Path $publicDir $bgmName
+    if (Test-Path -LiteralPath $try) {
+        $bgmPath = $try
+    } else {
+        $cand = Get-ChildItem -LiteralPath $publicDir -Filter 'bgm.*' -File -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+        if ($cand) { $bgmPath = $cand.FullName }
+    }
+}
+
+if (-not $bgmPath) {
+    Report '配乐' 'SKIP' 0 '没有背景音乐（public/bgm.*）'
+} elseif ($bgmPath -notmatch '\.wav$') {
+    # check_audio.py 只读 WAV（mp3/m4a 要 ffmpeg 才能解），不装 ffmpeg 就只做存在性提示
+    $sz = (Get-Item -LiteralPath $bgmPath).Length
+    Report '配乐' 'SKIP' 0 ("非 WAV 配乐，跳过波形检查：" + [System.IO.Path]::GetFileName($bgmPath) + " $([math]::Round($sz/1KB))KB")
+} else {
+    $argList = @((Join-Path $here 'check_audio.py'), $bgmPath)
+    if (Test-Path -LiteralPath $timingPath) { $argList += @('--timing', $timingPath) }
+    $sw.Restart()
+    $p2 = Invoke-Proc $py $argList
+    $sw.Stop()
+    $v = Verdict $p2
+    Report '配乐' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p2) $v.Detail
+}
+
+# ---------- 6. 静帧 ----------
 
 $stillsDir = Join-Path $root 'out\stills'
 if (-not (Test-Path -LiteralPath $stillsDir)) {
@@ -247,7 +286,7 @@ if (-not (Test-Path -LiteralPath $stillsDir)) {
     Report '静帧' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
 }
 
-# ---------- 6. 排版探针（HTML 样帧） ----------
+# ---------- 7. 排版探针（HTML 样帧） ----------
 
 if (-not $Html -or $Html.Count -eq 0) {
     $cand = @(Get-ChildItem -LiteralPath $root -Filter '*.html' -File -ErrorAction SilentlyContinue)
@@ -294,7 +333,7 @@ if ($Html.Count -eq 0) {
     Report '排版' $worst $totalMs $detail @($detailLines | Select-Object -First 8)
 }
 
-# ---------- 7. 成片 ----------
+# ---------- 8. 成片 ----------
 
 $outDir = Join-Path $root 'out'
 $mp4 = $null
@@ -327,7 +366,7 @@ if (-not $mp4) {
     Report '成片' $v.Status $sw.Elapsed.TotalMilliseconds (($([System.IO.Path]::GetFileName($mp4)) + '  ' + (VerdictText $v $p))) $v.Detail
 }
 
-# ---------- 8. 编码（只在 -Self 时查工具仓库自己） ----------
+# ---------- 9. 编码（只在 -Self 时查工具仓库自己） ----------
 
 if ($Self) {
     $fix = Join-Path $here 'fix-encoding.ps1'

@@ -13,6 +13,18 @@
     "transition": 0.6
   },
   "beats": { "bpm": 100, "offset": 0.15 },
+  "audio": {
+    "bgm": "bgm.wav",
+    "volume": 0.5,
+    "fadeIn": 0.2,
+    "fadeOut": 0.9,
+    "sfx": [
+      { "at": 0, "file": "sfx/riser.wav", "volume": 0.35 },
+      { "at": 4.6, "file": "sfx/whoosh.wav", "volume": 0.5 },
+      { "at": 10.6, "file": "sfx/whoosh.wav", "volume": 0.5 },
+      { "at": 13.1, "file": "sfx/click.wav", "volume": 0.45 }
+    ]
+  },
   "scenes": [
     {
       "id": "hook-01",

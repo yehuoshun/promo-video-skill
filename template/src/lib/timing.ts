@@ -32,7 +32,36 @@ export type Timing = {
     transition?: number;
   };
   beats?: { bpm: number; offset: number };
+  audio?: AudioCfg;
   scenes: Scene[];
+};
+
+/** 一记音效：at 是全局秒数，与 scenes[].start 用同一把尺 */
+export type SfxCue = {
+  at: number;
+  /** 相对 template/public/ 的路径 */
+  file: string;
+  volume?: number;
+};
+
+/**
+ * 音轨配置。文件都放在 template/public/ 下，组件里用 staticFile() 取。
+ * 三段都可有可无：没有 bgm 就是无声片，没有 voice 就是纯音乐片。
+ */
+export type AudioCfg = {
+  bgm?: string;
+  /** 背景音乐音量 0~1，0.5 约等于 -6 dB */
+  volume?: number;
+  /** 淡入秒数，默认 0.2 */
+  fadeIn?: number;
+  /** 淡出秒数，默认 0.9——太短会在结尾「啪」一声 */
+  fadeOut?: number;
+  sfx?: SfxCue[];
+  /** 整段旁白（一条轨），相对 public/；分句旁白请先 mix 成一条再放进来 */
+  voice?: string;
+  voiceAt?: number;
+  /** 有旁白时背景音乐压低多少 dB，默认 0（不压）。校验脚本要求人声高出音乐 ≥8 dB */
+  duck?: number;
 };
 
 export const timing = raw as Timing;

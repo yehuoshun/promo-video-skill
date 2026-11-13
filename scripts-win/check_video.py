@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 """成片体检：不依赖 ffmpeg / ffprobe，直接读 MP4 的 box 结构。
 
-查四件事：
+查五件事：
   1. 文件存在且非空
   2. 分辨率与 timing.json 对得上
   3. 时长与 timing.json 对得上（差 > 0.5s 判 ERROR）
   4. 码率没低到离谱（黑屏/空白渲染出来往往只有几百 Kbps）
+  5. 该有声的片子真的有音轨（timing.json 里配了 audio.bgm，成片却没有 soun 轨 → ERROR）
 
 用法：
     python scripts-win/check_video.py out/demo-1080p.mp4 --timing timing.json
     python scripts-win/check_video.py out/demo-4k.mp4 --timing timing.json
     python scripts-win/check_video.py out/demo-4k.mp4 --width 3840 --height 2160 --duration 52
+    python scripts-win/check_video.py out/demo.mp4 --timing timing.json --expect-audio
+    python scripts-win/check_video.py out/demo.mp4 --no-audio   # 明确要求静音版
 
 4K 版不用改参数：给的期望尺寸若是成片的一半（timing.json 里写 1920×1080、
 成片是 3840×2160），自动识别为 2× 超采样并通过。
@@ -95,6 +98,36 @@ def read_size(buf: bytes) -> tuple[int, int] | None:
     return round(w), round(h)
 
 
+def list_tracks(buf: bytes) -> list[dict]:
+    """遍历 moov/trak，取每条轨的 handler（vide / soun）与编码格式。
+
+    没有 ffprobe 也能判断「这片子到底有没有声」——直接看 moov 里有没有
+    handler 为 soun 的轨，音频采样率与声道数在 stsd 的 AudioSampleEntry 里。
+    """
+    out: list[dict] = []
+    got = find(buf, ["moov"])
+    if not got:
+        return out
+    moov_start, moov_end = got
+    for typ, ps, pe in iter_boxes(buf, moov_start, moov_end):
+        if typ != "trak":
+            continue
+        info = {"handler": "", "codec": "", "channels": 0, "rate": 0}
+        h = find(buf, ["mdia", "hdlr"], ps, pe)
+        if h:
+            info["handler"] = buf[h[0] + 8 : h[0] + 12].decode("latin-1", "replace")
+        st = find(buf, ["mdia", "minf", "stbl", "stsd"], ps, pe)
+        if st:
+            base = st[0] + 8  # version/flags(4) + entry_count(4) 之后就是第一个 sample entry
+            info["codec"] = buf[base + 4 : base + 8].decode("latin-1", "replace")
+            if info["handler"] == "soun":
+                # AudioSampleEntry：+24 声道数(2)，+32 采样率(16.16 定点)
+                info["channels"] = int.from_bytes(buf[base + 24 : base + 26], "big")
+                info["rate"] = int.from_bytes(buf[base + 32 : base + 36], "big") >> 16
+        out.append(info)
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="校验成片")
     ap.add_argument("file", help="mp4 路径")
@@ -104,6 +137,8 @@ def main() -> int:
     ap.add_argument("--duration", type=float, help="期望时长（秒）")
     ap.add_argument("--tolerance", type=float, default=0.5, help="时长容差，默认 0.5 秒")
     ap.add_argument("--min-bitrate", type=float, default=0.5, help="最低码率 Mbps，默认 0.5")
+    ap.add_argument("--expect-audio", action="store_true", help="必须有音轨（--timing 里配了 audio.bgm 时自动开启）")
+    ap.add_argument("--no-audio", action="store_true", help="明确要求静音片：有音轨就报警")
     args = ap.parse_args()
 
     path = Path(args.file)
@@ -119,11 +154,13 @@ def main() -> int:
         return 2
 
     exp_w, exp_h, exp_dur = args.width, args.height, args.duration
+    timing_has_bgm = False
     if args.timing:
         t = json.loads(Path(args.timing).read_text(encoding="utf-8"))
         exp_w = exp_w or t.get("width")
         exp_h = exp_h or t.get("height")
         exp_dur = exp_dur if exp_dur is not None else t.get("duration")
+        timing_has_bgm = bool((t.get("audio") or {}).get("bgm"))
 
     buf = path.read_bytes()
     duration = read_duration(buf)
@@ -155,6 +192,29 @@ def main() -> int:
                 errors.append(f"宽度 {dims[0]} != 期望 {exp_w}")
             if exp_h and dims[1] != int(exp_h):
                 errors.append(f"高度 {dims[1]} != 期望 {exp_h}")
+
+    # ---- 音轨：没有 ffprobe，就看 moov 里有没有 handler=soun 的轨 ----
+    tracks = list_tracks(buf)
+    audio_tracks = [x for x in tracks if x["handler"] == "soun"]
+    expect_audio = args.expect_audio or timing_has_bgm
+    if args.no_audio:
+        expect_audio = False
+
+    if audio_tracks:
+        a = audio_tracks[0]
+        spec = f"{a['channels']}ch {a['rate']}Hz" if a["channels"] else "参数读不出"
+        print(f"音轨：有  {a['codec']}  {spec}")
+        for extra in audio_tracks[1:]:
+            print(f"      又一条  {extra['codec']}")
+        if args.no_audio:
+            warns.append(f"配了 --no-audio，但成片有 {len(audio_tracks)} 条音轨")
+        elif args.timing and not timing_has_bgm:
+            warns.append("成片带音轨，但 timing.json 里没有 audio.bgm：确认是不是忘了删旧音轨")
+    else:
+        print("音轨：无（静音片）")
+        if expect_audio:
+            src = "timing.json 的 audio.bgm" if timing_has_bgm else "--expect-audio"
+            errors.append(f"成片没有音轨：{src} 要声音，但 MP4 里只有 vide 轨（Remotion 的 Audio 路径写错会静默跳过）")
 
     if warns:
         print(f"\n[WARN] {len(warns)} 条")

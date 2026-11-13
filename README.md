@@ -4,7 +4,7 @@
 
 - **谁在执行**：DeepSeek（本机 agent）为主，Cursor / Claude Code 也能跑
 - **跑在哪**：Windows 优先（PowerShell），Linux / macOS 兼容
-- **现在到哪了**：P4 完成——六道闸门收成一条 `scripts-win\verify.cmd`，一次跑完输出一张表，坏项目 exit 1；P1 的 demo、P2 的六个效果组件、P3 的三道新闸门都在，从样帧到成片的每一步都有脚本能判真假
+- **现在到哪了**：P5 完成——能合成配乐、能查「音乐真的踩在 `timing.json` 的拍上吗」、成片有没有音轨也纳入了体检；七道闸门仍收在一条 `scripts-win\verify.cmd` 里。P1 的 demo、P2 的六个效果组件、P3 的三道新闸门都在，从样帧到成片的每一步都有脚本能判真假
 
 ## 为什么有这个项目
 
@@ -204,6 +204,27 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 - **`-Self` 会把根切到 `template/`**：在仓库根跑，第一步就会报「缺 timing.json」，把真问题淹掉；同时也排除 `examples\bad*.html` 这类故意做坏的反例，保证自检本身是绿的。
 
 **字体判定的修正**（P3 的一个教训）：原来按「每个族名」判，`"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif` 这种跨平台字体栈掉了一两个族名就告警——可这本来就是正确写法。现在按**整条栈**判：栈里一个族名都命中不了才报（那时浏览器用的是默认字体，字形完全不是你设计的那套）。改完 `examples\card.html` 从 3 WARN 变 0 WARN，`bad.html` 的「字体全缺」仍然抓得住。
+## P5 验收结果（本机实测）
+
+| 命令 | 实测 |
+|---|---|
+| `python scripts-win\gen_music.py template\timing.json --out template\public\bgm.wav` | 1292 KB / 15.00s / 峰值 -3.1 dBFS / RMS -19.0 dBFS |
+| `python scripts-win\gen_sfx.py` | whoosh 0.55s、click 0.09s、riser 1.2s |
+| `python scripts-win\check_audio.py template\public\bgm.wav --timing template\timing.json` | 实测 100.0 BPM / 相位 0.13s（偏差 +0.0 BPM、-20 ms）/ 0 ERROR |
+| `scripts-win\say.cmd "把流程写成规范，不是提示词，是施工图。" -Out tmp\voice.wav -Rate -2` | 6.85s / 295 KB / Microsoft Huihui Desktop（zh-CN） |
+| `python scripts-win\check_audio.py tmp\voice.wav --narration` | 0 ERROR（旁白模式：句间自然停顿不算毛病） |
+| `npm run render` | 3.80 MB，音轨 `mp4a 2ch 48kHz` |
+| `scripts-win\verify.cmd -Self` | 7 通过 / 2 警告 / 0 失败 / 0 跳过（11.7 秒） |
+
+为什么自己合成音乐而不是找素材：**版权**（宣传片是要商用的）和**可复现**（同一份 timing.json 每次生成的 wav 逐字节相同，改完 BPM 重跑一次就好）。`gen_music.py` 读 `timing.json` 的 `beats.bpm/offset` 和 `duration`，A 小调六小节 Am Am F F C G，pad + 贝斯 + 底鼓 + 镲 + 十六分拨弦，单声道 44.1kHz。这是「能用」的占位，不是成品配乐——真做商业片把这一轨换成买来的音乐，其余一个字不用改。
+
+三条实现取舍：
+
+- **小节线必须落在拍网格上**：第一版写 `t0 = i * bar`（0、2.4、4.8…），而拍网格从 `offset=0.15` 起算，整条音乐的小节和拍点错开 0.15 秒——听感上是「一直差半口气」，看波形看不出来，是 `check_audio.py` 报「相位差 -150 ms」才暴露的。
+- **拍点检测只看底鼓频段**：宽带起音曲线会被开头淡入骗到（那一下比任何一拍都猛），实测把相位拽到 0.00s。改成 FFT 带通 40~120 Hz + 跳过前 0.2 秒，同一份音频立刻测出 0.13s（真值 0.15s）。判据也不是「绝对相等」：BPM 差 >2 或相位差 >60 ms 才 ERROR。
+- **有没有声音分两层查**：`check_audio.py` 查音频文件本身（时长、电平、拍点位置），`check_video.py` 查成片里有没有 `soun` 轨。Remotion 的 `<Audio>` 路径写错会**静默跳过**——片子照常渲染，只是没声；现在 timing.json 配了 `audio.bgm` 而成片无音轨，直接 ERROR。
+
+音轨在 `template/src/Soundtrack.tsx`：背景音乐用帧回调算音量包络（淡入 0.2s / 淡出 0.9s），音效按 `audio.sfx[].at` 插在场景切点，全部读 `timing.json`。旁白是可选的一条轨（`audio.voice`），先用 `say.cmd` 合成再丢进 `public/`。
 ## 怎么用
 
 ```powershell
@@ -215,12 +236,15 @@ scripts-win\new-project.cmd my-video -Dest ..
 
 # 2. 改 timing.json 定节奏，改 src/scenes/ 做画面（每个场景一个组件）
 
-# 3. 出片
-cd ..\my-video
+# 3. 配乐（可选）：从 timing.json 的 BPM 生成一条占位 BGM，再用生成器补齐音效
+python ..\scripts-win\gen_music.py timing.json --out public\bgm.wav
+python ..\scripts-win\gen_sfx.py --out-dir public\sfx
+
+# 4. 出片
 npm run render       # 1080p，约 30 秒
 npm run render4k     # 4K，约 80 秒
 
-# 4. 交付前体检：一条命令跑完六道闸门，有 ERROR 就 exit 1
+# 5. 交付前体检：一条命令跑完七道闸门，有 ERROR 就 exit 1
 scripts-win\verify.cmd .
 ```
 
@@ -235,7 +259,7 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 | P2 | effect kit：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 | ✅ 6 个组件 + 18 秒样板间，`npm run render:effects` 出片过 `check_video.py` |
 | P3 | 校验闸门：assets / stills / probe / video | ✅ 坏资产、压扁截图、缺字体、静止帧都能自动报错（examples\bad.html 是反例样本，跑它必 exit 1） |
 | P4 | 一条命令串起六道闸门（verify） | ✅ 正常项目 exit 0、坏项目 exit 1 并点名原因（静帧重复 / 小图放大 / 排版两个 ERROR） |
-| P5 | 声音（可选） | 先做无旁白 + 大字版，TTS 后置 |
+| P5 | 声音：合成配乐 / 音效 / 离线旁白 + 拍点与音轨校验 | ✅ 配乐实测 100.0 BPM、相位偏差 -20 ms；成片带 mp4a 音轨；旁白可离线合成并单独体检 |
 
 ## 授权与致谢
 

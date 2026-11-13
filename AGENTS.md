@@ -30,9 +30,9 @@
 | 2 | 需求问询 ★人 | `需求确认.md`、样帧 | 用户回复「开始」；HTML 样帧过 `probe.cmd` 0 ERROR |
 | 3 | 建工程 | 项目骨架 | `scripts-win\new-project.cmd` 建好、`npm run render` 出得片 |
 | 4 | 素材盘点 | `public/`、素材清单 | `check_assets.py` 无 ERROR，真实截图 ≥8 张且源图宽 ≥ 显示宽×2 |
-| 5 | 配乐与节拍 | `public/bgm.mp3`、bpm/offset | 有可用的 beat 网格（手标即可） |
+| 5 | 配乐与节拍 | `public/bgm.wav`、`timing.json` 的 `audio` 段 | `check_audio.py public/bgm.wav --timing timing.json` 无 ERROR：BPM 差 ≤2、相位差 ≤60ms |
 | 6 | 分镜与场景 | `timing.json`、`src/scenes/` | `check_timing.py` 无 ERROR |
-| 7 | 配音（可选） | 音轨 | 无旁白时跳过，直接进 8 |
+| 7 | 配音（可选） | `public/voice.wav` | `say.cmd` 合成后用 `check_audio.py public/voice.wav --narration` 无 ERROR；无旁白就跳过，直接进 8 |
 | 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `check_stills.py` 无 ERROR + 校验清单 B 层全勾 |
 | 9 | 渲染交付 | `out/final-4k.mp4` | `scripts-win\verify.cmd .` 0 失败（含 check_video 0 ERROR）+ 校验清单 C 层全勾 |
 | 10 | 改版 | 新版本 | 改动写进 `需求确认.md` 的修改记录 |
@@ -70,6 +70,7 @@ scripts-win\verify.cmd .   # 交付前体检：六道闸门一次跑完，有 ER
 ```
 
 时间只改 `timing.json`；场景在 `src/scenes/`；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
+**声音也读 `timing.json`**：`audio.bgm/volume/fadeIn/fadeOut/sfx[].at`，组件在 `src/Soundtrack.tsx`。配乐不找素材、用 `scripts-win\gen_music.py` 按 BPM 合成（版权干净、可复现）；旁白用 `scripts-win\say.cmd` 离线合成。
 **现成效果先看 `src/effects/`**：渐变底 / 颗粒暗角 / 光扫 / 大字 / 等距卡 / 数字滚动，六个都是 `(frame, fps, opts)` 纯函数组件，直接拼进场景即可；想先看效果跑 `npm run render:effects`（18 秒样板间）。
 要动效先拼现成的，不够再往 `anim.ts` 加纯函数——不要引入会自己跑的动画库。
 **每一帧都必须由 `useCurrentFrame()` 算出来**——纯 CSS animation/transition 渲染器抓不到时间，会渲染成一堆相同的帧。
