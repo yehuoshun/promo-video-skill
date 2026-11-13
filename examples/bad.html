@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>故意做错的版式（用来验证 probe.cmd 会不会拦住）</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0b0d12; color: #eef2f7; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; width: 1920px; height: 1080px; position: relative; overflow: hidden; }
+  .stage { position: absolute; inset: 0; padding: 90px 110px; box-sizing: border-box; }
+  h1 { font-size: 64px; margin: 0 0 40px; }
+
+  /* 1. 图片被拉伸：素材 400x100 画成 400x400 */
+  .stretched { width: 400px; height: 400px; display: block; border: 2px solid rgba(255,255,255,.2); }
+
+  /* 2. 文字被裁：容器定高，内容放不下 */
+  .clipped {
+    margin-top: 40px; width: 520px; height: 60px; overflow: hidden;
+    font-size: 30px; line-height: 44px; background: #161a22; padding: 8px 12px; box-sizing: border-box;
+  }
+
+  /* 3. 带文字的元素出血：左边被切掉一截 */
+  .bleed { position: absolute; left: -90px; top: 560px; font-size: 40px; background: #2a1f2f; padding: 10px 16px; }
+
+  /* 4. 字体栈里塞了本机没有的字体 */
+  .fancy { margin-top: 40px; font-family: "PingFang SC", "Noto Sans SC", sans-serif; font-size: 34px; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <h1>这张版式每一条都是错的</h1>
+
+    <!-- 源图 400x100，这里画成 400x400：横向不变、纵向拉 4 倍 -->
+    <img class="stretched" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='100'%3E%3Crect width='400' height='100' fill='%238ef0c8'/%3E%3C/svg%3E" alt="被拉伸的素材">
+
+    <div class="clipped">这一段文字比容器高三倍，超出部分被 overflow:hidden 直接切掉，观众根本看不到后半句在说什么，这就是典型的"字被裁"。</div>
+
+    <div class="fancy">PingFang SC 在 Windows 上不存在，会静默回退成别的字体。</div>
+  </div>
+
+  <div class="bleed">这一整块跑到画布左边外面去了</div>
+</body>
+</html>

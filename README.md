@@ -4,7 +4,7 @@
 
 - **谁在执行**：DeepSeek（本机 agent）为主，Cursor / Claude Code 也能跑
 - **跑在哪**：Windows 优先（PowerShell），Linux / macOS 兼容
-- **现在到哪了**：P2 完成——六个效果组件 + 18 秒样板间，`npm run render:effects` 39.4 秒出片、过 `check_video.py`；`template/` 骨架能直接出片，15 秒 demo 1080p 渲染 28.6 秒、4K 79 秒
+- **现在到哪了**：P3 完成——三道新闸门（HTML 排版探针、静帧「是否在动」、素材疑似放大）都能自己 fail；加上 P1 的 demo 与 P2 的六个效果组件，从样帧到成片的每一步都有脚本能判真假
 
 ## 为什么有这个项目
 
@@ -32,8 +32,11 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   shot.ps1/.cmd         HTML 截图，默认 1920×1080@2x = 3840×2160
   new-project.ps1/.cmd  复制 template 建新项目 + 装依赖
   check_timing.py       分镜结构、时长底线、版式重复、时间轴连续性
-  check_assets.py       素材宽度、比例、重名、中文文件名
+  check_assets.py       素材宽度、比例、重名、中文文件名、疑似小图放大
+  check_stills.py       静帧体检：相邻截图差值，抓「时间轴在走、画面不动」
   check_video.py        成片体检：分辨率、时长、码率（不依赖 ffmpeg）
+  probe.ps1/.cmd/.js    排版探针：headless Chrome 量 DOM，查文字被裁 / 图片变形 / 出画 / 缺字体
+  fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
   timing.json           分镜与时间（唯一真相）
@@ -45,6 +48,7 @@ template/              可复制的 Remotion 工程
   src/scenes/           Hook / Showcase / Cta / EffectsLab（样板间）
 examples/
   card.html             1920×1080 样张，换配色只改 3 个 CSS 变量
+  bad.html              故意做错的样张（拉伸图 / 裁字 / 出画 / 缺字体），用来验证探针真的会 fail
   timing.example.json   52 秒 / 60fps / 14 场景的示例分镜（含两段快切蒙太奇）
 docs/                  给人看的：借鉴清单、踩坑记录、样帧
 out/                   静帧、对比图、成片（不进 git）
@@ -113,6 +117,48 @@ out/                   静帧、对比图、成片（不进 git）
 - **效果组件不自己读 `useCurrentFrame`**，`frame` 由场景传进来。这样既能嵌进 `Sequence`，也能在样板间里并排比较、单独抽任意一帧渲染——这是「必须能 seek」那条硬规矩的具体做法。
 - **三处是审图改出来的**（先看截图才发现，靠想象发现不了）：光扫 `strength` 1.25→0.62、带宽 620→480（1.25 时白成一整面墙，不像"扫过"）；等距卡片 `cardWidth` 300→330 加整体 `translate(4%, 6%)`（原来视觉重心偏左上、右下空一大块）；颗粒对照段用 `clipPath: inset(0 50% 0 0)` 只叠左半边，坐标仍按整帧算，不缩放折半——否则两半内容会错位。
 
+## P3 验收结果（本机实测）
+
+这一阶段补的是「靠肉眼看不出来的错」。原来的闸门只看文件：宽高对不对、时长对不对、码率够不够——于是「截图被拉扁了 4%」「标题第二个字被容器切掉了半截」「这一段三秒钟画面没动」全部能过。
+
+**排版探针 `probe.cmd`**：不用 Playwright，headless Chrome 加 `--dump-dom` 就够——注入一段脚本量完盒子，把结果 base64 塞进一个 `<div>` 的属性里，dump 出来再解码。四类判定，每一条都是真人眼容易漏的：
+
+| 检查 | 判定方式 | 级别 |
+|---|---|---|
+| 文字被裁 | 有文字的元素 `overflow` 非 `visible` 时，`scrollWidth/scrollHeight` 比客户区大出多少像素 | ERROR |
+| 图片变形 | `<img>`/`<video>` 的原始长宽比 vs 渲染长宽比，偏差 > 2% | ERROR |
+| 出画 | 带文字的元素超出画布多少像素（纯装饰的渐变光斑出血不算） | WARN（`-Strict` 升 ERROR） |
+| 缺字体 | 把字画进 canvas 比像素，和「不存在的字体」渲染结果一致就是没有 | WARN |
+
+| 命令 | 结果 |
+|---|---|
+| `scripts-win\probe.cmd examples\card.html` | 0 ERROR / 3 WARN，1.3 秒（WARN = 字体栈里的 PingFang SC / Noto Sans SC / Cascadia Mono 本机没有） |
+| `scripts-win\probe.cmd examples\bad.html` | **2 ERROR / 3 WARN，exit 1**：`img` 渲染 404×404 而原图 400×100（差 75%）、`.clipped` 纵向超出 132px、`.bleed` 出画 90px、两个缺字体 |
+
+**静帧体检 `check_stills.py`**：`check_video.py` 能证明「片子是 18 秒」，证明不了「这 18 秒里有几百个不同画面」。
+
+| 命令 | 结果 |
+|---|---|
+| `python scripts-win\check_stills.py`（3 张真实静帧） | 11.71 / 6.82，0 ERROR / 0 WARN |
+| 同上，多塞一张重复帧 | 差值 0.00 → **1 ERROR，exit 1**：「两张截图完全一样：f246 → f297，动画没生效」 |
+
+**素材放大检测 `check_assets.py`**：判的是细节而不是尺寸。把图缩到一半再放大回来，原生图会掉细节、放大图几乎无损；像素复制式放大还有成对的重复行列。用合成的标定样本量出来的阈值：
+
+| 样本 | 缩半往返误差 | 重复行列 | 判定 |
+|---|---|---|---|
+| 原生 1920×1080 静帧 | 0.93 | 0% | 过 |
+| 双三次 2× 放大 | 0.12 | 74% | 报 |
+| 双三次 3× 放大 | 0.13 | 74% | 报 |
+| NEAREST 2× 放大 | 0.49 | 87% | 报 |
+
+阈值取「误差 < 0.30 或 重复行列 > 65%」，并要求图本身有内容（标准差 > 10，否则纯渐变背景会误伤）。六个样本（3 张合成放大 + 2 张原生静帧 + 1 张 JPEG 拼图）跑下来三张放大全部报出、三张原生全部没误报。
+
+三条实现取舍：
+
+- **不引 Playwright**：只为了量盒子装一个几十 MB 的浏览器驱动不值，Chrome 本来就在（`shot.ps1` 已在用），`--dump-dom` + base64 通道足够把结构化结果带回来。
+- **字体靠像素比对，不靠宽度**：中文全角，任何字体下 5 个字的宽度都一样，`PingFang SC`、`Noto Sans SC` 和随便编的假名字量出来完全相同（实测都是 480px）。`document.fonts.check()` 更假——本机对所有族名都返回 `true`。
+- **探针只对 HTML 有效**：Remotion 场景是 TSX，量不到 DOM。所以它的位置是「样帧 / 素材页 / 浏览器框里的页面」进 Remotion 之前那道闸；Remotion 自己的画面靠 `check_stills.py` 抓静止帧。
+
 ## 怎么用
 
 ```powershell
@@ -139,7 +185,7 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 | P0 | 骨架：精简 AGENTS.md + 4 份 references + Windows 脚本 | ✅ 空项目能出一张 1920×1080 静帧 |
 | P1 | Remotion 骨架 + 15 秒 demo（3 场景） | ✅ `npm run render` 出片，1080p / 4K 都过 `check_video.py` |
 | P2 | effect kit：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 | ✅ 6 个组件 + 18 秒样板间，`npm run render:effects` 出片过 `check_video.py` |
-| P3 | 校验闸门：assets / stills / sheet / video | 坏资产、压扁截图、缺字能自动报错 |
+| P3 | 校验闸门：assets / stills / probe / video | ✅ 坏资产、压扁截图、缺字体、静止帧都能自动报错（examples\bad.html 是反例样本，跑它必 exit 1） |
 | P4 | 声音（可选） | 先做无旁白 + 大字版，TTS 后置 |
 
 ## 授权与致谢

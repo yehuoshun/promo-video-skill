@@ -180,3 +180,61 @@ $t = [System.IO.File]::ReadAllText($f) -replace "`r`n", "`n" -replace "`n", "`r`
 ```
 
 仓库里 `.gitattributes` 已经把 `*.cmd`、`*.ps1` 设为 `eol=crlf`，但**那只管 git 检出**；新写的 `.cmd` 落盘时就得是 CRLF，否则本地先踩一遍。
+
+## 14. 变量名不区分大小写，局部变量会覆盖同名参数
+
+`probe.ps1` 里写了 `param([switch]$Json, ...)`，脚本中间又写 `$json = ...GetString(...)`。PowerShell 的变量名**不区分大小写**，`$json` 和 `$Json` 是同一个变量，而 `[switch]` 参数是「受类型约束的变量」，往里塞字符串直接抛：
+
+```
+Cannot convert the "{"vw":1904,...}" value of type "System.String" to type
+"System.Management.Automation.SwitchParameter".
+    + CategoryInfo   : MetadataError: (:) [probe.ps1], ArgumentTransformationMetadataException
+```
+
+坑在于**报错位置很误导**：`-File` 方式运行只给脚本名和行号，看着像是「参数绑定失败」，于是先怀疑 `.cmd` 的 `%*` 展开、执行策略、当前目录——都不是。真正定位靠这一招：把调用包进 try/catch 打印 `$_.ScriptStackTrace`，一次拿到行号。
+
+```powershell
+$inner = "try { & '.\scripts-win\probe.ps1' -Html '.\examples\card.html' } catch { 'ERR: ' + `$_.Exception.Message; 'STACK: ' + `$_.ScriptStackTrace }"
+$enc = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($inner))
+cmd /c "powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand $enc > out.txt 2>&1"
+```
+
+修法：局部变量一律加前缀（`$probeJson`），不要和参数表里的名字撞。同理，`$args`、`$input`、`$error`、`$host`、`$matches`、`$profile` 这些自动变量也不能接。
+
+## 15. Chrome 的 `--window-size` 不等于 `innerWidth/innerHeight`
+
+`--window-size=1920,1080` 跑 headless，页面里读到的 `window.innerWidth/innerHeight` 是 **1904/985**（滚动条、窗口边框占掉了）。后果是「整帧容器」被误判出画：`div.bg`、`div.grid`、`div.stage` 这种 `position:absolute; inset:0` 的元素被报「超出画布 95px」，一屏十几条假警报，真问题就被淹了。
+
+修法：别信 `innerWidth`，把画布尺寸从调用方传进来。
+
+```powershell
+# probe.ps1 注入时先定好画布
+$snippet = "<script>`nwindow.__DSH_CANVAS = { w: $Width, h: $Height };`n$js`n</script>"
+```
+
+```js
+var cv = window.__DSH_CANVAS || { w: innerWidth, h: innerHeight };
+```
+
+同理，`getBoundingClientRect()` 量出来的坐标一律对着这个尺寸比，不要对着 `innerWidth` 比。
+
+### 顺带一条：别用「文字宽度」判断字体在不在
+
+想知道字体栈里某个族名本机有没有，量文字宽度是最直觉的做法，但它会骗人：中文字符是全角，**任何字体下 5 个字的宽度都一样**，`"Noto Sans SC"`、`"PingFang SC"`、以及一个随便编的假名字，三者量出来的宽度完全相同（实测都是 480/427px）。`document.fonts.check()` 更不可靠，本机实测对所有族名都返回 `true`。
+
+可靠做法是把字画进 canvas 比像素：同一段文字，字形不同就是不同字体，1 个像素的差别都能看出来。
+## 16. 「修编码的脚本」自己也会被改坏（BOM 的鸡生蛋）
+
+`edit` 这类工具写回 `.ps1` 时会丢 BOM，PowerShell 5.1 于是按 GBK 解析：中文变乱码、整个脚本语法报错。我为此加了 `scripts-win\fix-encoding.cmd`，结果第一次改它自己就踩了同一个坑——`fix-encoding.ps1` 连运行都运行不了，自然救不了自己。
+
+判断有没有坏：**首字节不是 `239,187,191`**（也就是文件不以 `EF BB BF` 开头）。
+
+救法不依赖任何工具，直接字节级补：
+
+```powershell
+$p = "scripts-win\fix-encoding.ps1"
+$t = [System.IO.File]::ReadAllText($p, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($p, $t, (New-Object System.Text.UTF8Encoding($true)))
+```
+
+省事的规矩：**凡是 `.ps1`，改完立刻跑 `scripts-win\fix-encoding.cmd`，别等下一轮**；只有改的正好是 `fix-encoding.ps1` 本身时，才用上面的字节级写法。

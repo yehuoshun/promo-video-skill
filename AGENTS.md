@@ -27,13 +27,13 @@
 |---|---|---|---|
 | 0 | 环境体检 | — | `scripts-win/doctor.ps1` 无 FAIL |
 | 1 | 预调研 | `调研笔记.md` | 一句话定位 + 3 条卖点 + 至少 8 个可截图页面/作品，每条带 URL |
-| 2 | 需求问询 ★人 | `需求确认.md`、样帧 | 用户回复「开始」 |
+| 2 | 需求问询 ★人 | `需求确认.md`、样帧 | 用户回复「开始」；HTML 样帧过 `probe.cmd` 0 ERROR |
 | 3 | 建工程 | 项目骨架 | `scripts-win\new-project.cmd` 建好、`npm run render` 出得片 |
-| 4 | 素材盘点 | `public/`、素材清单 | 真实截图 ≥8 张且源图宽 ≥ 显示宽×2 |
+| 4 | 素材盘点 | `public/`、素材清单 | `check_assets.py` 无 ERROR，真实截图 ≥8 张且源图宽 ≥ 显示宽×2 |
 | 5 | 配乐与节拍 | `public/bgm.mp3`、bpm/offset | 有可用的 beat 网格（手标即可） |
 | 6 | 分镜与场景 | `timing.json`、`src/scenes/` | `check_timing.py` 无 ERROR |
 | 7 | 配音（可选） | 音轨 | 无旁白时跳过，直接进 8 |
-| 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | 校验清单 B 层全勾 |
+| 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `check_stills.py` 无 ERROR + 校验清单 B 层全勾 |
 | 9 | 渲染交付 | `out/final-4k.mp4` | `check_video.py` 0 ERROR + 校验清单 C 层全勾 |
 | 10 | 改版 | 新版本 | 改动写进 `需求确认.md` 的修改记录 |
 
@@ -89,5 +89,7 @@ npm run studio     # 浏览器实时预览
 $t = [System.IO.File]::ReadAllText($p, [System.Text.UTF8Encoding]::new($false)).TrimStart([char]0xFEFF)
 [System.IO.File]::WriteAllText($p, $t, (New-Object System.Text.UTF8Encoding($true)))
 ```
+
+**改完 .ps1 就跑一次 scripts-win\fix-encoding.cmd**：一条命令把 .ps1 补 BOM + CRLF、.cmd 转 CRLF、其余文本转 LF；加 -Check 只检查不改（可以当 CI 闸门）。这条规矩是踩了两次才加的——edit 工具写回 .ps1 时会丢 BOM，中文随即变乱码、整个脚本语法报错；fix-encoding.ps1 自己也会这样坏，那时它跑不起来，只能按脚本头部注释字节级补回（首字节应为 239,187,191）。
 
 Python 侧一律在 import 后加 `sys.stdout.reconfigure(encoding="utf-8")`，否则控制台按 cp936 输出，中文乱码。
