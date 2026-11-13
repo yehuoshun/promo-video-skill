@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1920px; height: 1080px; overflow: hidden;
+    background: #07090d;
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+    color: #f2f4f7; position: relative;
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(120% 90% at 20% 20%, #000 30%, transparent 78%);
+  }
+  .glow {
+    position: absolute; width: 1200px; height: 900px; left: -260px; top: -320px;
+    background: radial-gradient(circle at 40% 45%, rgba(90,140,255,.22), transparent 62%);
+    filter: blur(20px);
+  }
+  .glow2 {
+    position: absolute; width: 900px; height: 900px; right: -180px; bottom: -300px;
+    background: radial-gradient(circle at 50% 50%, rgba(142,240,200,.14), transparent 65%);
+    filter: blur(24px);
+  }
+
+  .left { position: absolute; left: 116px; top: 138px; width: 1020px; z-index: 3; }
+  .kicker {
+    display: flex; align-items: center; gap: 18px;
+    font-size: 21px; letter-spacing: .26em; color: rgba(242,244,247,.55);
+    font-weight: 600; text-transform: uppercase;
+  }
+  .kicker b { color: #8ef0c8; letter-spacing: .26em; }
+  .kicker .cn { letter-spacing: .08em; color: rgba(242,244,247,.62); }\n  .kicker i { width: 46px; height: 1px; background: rgba(255,255,255,.22); display: inline-block; }
+
+  h1 {
+    margin-top: 44px;
+    font-size: 152px; line-height: 1.04; font-weight: 800; letter-spacing: -.02em;
+  }
+  h1 .mint { color: #8ef0c8; }
+  h1 .small { font-size: 118px; letter-spacing: -.01em; }
+
+  .sub {
+    margin-top: 40px; width: 880px; font-size: 35px; line-height: 1.55;
+    color: rgba(242,244,247,.72); font-weight: 500;
+  }
+  .sub em { font-style: normal; color: #f2f4f7; }
+
+  .chips { margin-top: 44px; display: flex; gap: 16px; }
+  .chip {
+    padding: 16px 26px; border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.05); border-radius: 999px;
+    font-size: 27px; font-weight: 700;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    color: #f2f4f7; letter-spacing: .01em;
+  }
+  .chip s { text-decoration: none; color: rgba(242,244,247,.5); font-weight: 500; }
+
+  .url {
+    position: absolute; left: 116px; bottom: 96px; z-index: 3;
+    display: flex; align-items: center; gap: 16px;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 26px; color: rgba(242,244,247,.62);
+  }
+  .url .dot { width: 10px; height: 10px; border-radius: 50%; background: #8ef0c8; box-shadow: 0 0 18px #8ef0c8; }
+
+  /* 右侧：真实语雀目录树截图 + 终端回显 */
+  .stage { position: absolute; right: -150px; top: 104px; width: 1000px; height: 1010px; z-index: 2; }
+  .win {
+    position: absolute; inset: 0;
+    background: #ffffff; border-radius: 20px; overflow: hidden;
+    box-shadow: 0 40px 120px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.16);
+  }
+  .win img { width: 100%; display: block; }
+  .win::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(0deg, #07090d 4%, rgba(7,9,13,0) 38%),
+      linear-gradient(90deg, #07090d 0%, rgba(7,9,13,.62) 18%, rgba(7,9,13,.04) 46%, rgba(7,9,13,.50) 100%);
+  }
+  .win .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 240px; background: linear-gradient(0deg, #07090d 12%, rgba(7,9,13,0) 100%); }
+  .term {
+    position: absolute; left: -150px; bottom: 96px; width: 840px; z-index: 4;
+    background: rgba(8,11,16,.94); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 16px; padding: 26px 30px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.7);
+    backdrop-filter: blur(6px);
+    font-family: "Cascadia Mono", "Consolas", monospace; font-size: 24px; line-height: 1.7;
+  }
+  .term .ln1 { color: rgba(242,244,247,.55); }
+  .term .ln1 b { color: #f2f4f7; font-weight: 700; }
+  .term .ln2 { color: #8ef0c8; font-weight: 700; }
+  .term .ln2 u { text-decoration: none; color: rgba(242,244,247,.45); font-weight: 500; }
+  .term .ln3 { color: rgba(242,244,247,.45); font-size: 22px; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="glow"></div>
+  <div class="glow2"></div>
+
+  <div class="left">
+    <div class="kicker"><b>YUQUE-IMPORT-SKILL</b><i></i><span class="cn">开源 MIT</span></div>
+    <h1>
+      一条命令<br>
+      <span class="small">搬完整个仓库</span>
+    </h1>
+    <div class="sub">GitHub 仓库 → 语雀知识库<br><em>目录、文件名、层级</em>，原样搬过去</div>
+    <div class="chips">
+      <div class="chip">1210 <s>个节点</s></div>
+      <div class="chip">83 <s>个目录</s></div>
+      <div class="chip">1127 <s>篇文档</s></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="win"><img src="../public/yuque-toc.png"></div>
+    <div class="term">
+      <div class="ln1">PS&gt; python yuque_tree_import.py <b>--root</b> d2l-zh <b>--dry</b></div>
+      <div class="ln2">1210 节点 <u>·</u> 83 目录 <u>·</u> 1127 文档</div>
+      <div class="ln3">层级一条没少，直接入库</div>
+    </div>
+  </div>
+
+  <div class="url"><span class="dot"></span>github.com/yehuoshun/yuque-import-skill</div>
+</body>
+</html>
