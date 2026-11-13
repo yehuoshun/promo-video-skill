@@ -1,6 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Composition, Sequence, useVideoConfig } from "remotion";
 import { Cta } from "./scenes/Cta";
+import { EffectsLab } from "./scenes/EffectsLab";
 import { Hook } from "./scenes/Hook";
 import { Showcase } from "./scenes/Showcase";
 import { theme } from "./lib/theme";
@@ -84,6 +85,15 @@ export const RemotionRoot: React.FC = () => {
         fps={FPS}
         width={3840}
         height={2160}
+      />
+      {/* effect kit 的样板间：六段各 3 秒，跟 timing.json 无关 */}
+      <Composition
+        id="Effects"
+        component={EffectsLab}
+        durationInFrames={540}
+        fps={30}
+        width={WIDTH}
+        height={HEIGHT}
       />
     </>
   );
