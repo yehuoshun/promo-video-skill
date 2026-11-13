@@ -295,7 +295,7 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 | 时长 / 帧数 | 49.9s / 1497 帧 @30fps（demo 的 3.3 倍，第一次跑真实长度） |
 | 结构 | 6 场景：大字开场 / 数字痛点 / 终端 dry-run / 语雀目录树 / 知识库列表 / CTA |
 | 真实截图 | 4 张，全部来自真实页面与真实脚本输出（终端里 1210 节点那行是 `--dry` 的原样 stdout） |
-| 旁白 / 配乐 | 6 句 SAPI 合成 + 程序生成的 BGM（100 BPM，六个切点全踩在拍上） |
+| 旁白 / 配乐 | 6 句 edge-tts（zh-CN-XiaoxiaoNeural，神经语音，共 22.7s）+ 程序生成的 BGM（100 BPM，六个切点全踩在拍上） |
 | 出片 | 1080p 14.4 MB；4K 33.2 MB（2× 超采样） |
 | `verify.cmd` | 5 通过 / 3 警告 / 0 失败 / 1 跳过 |
 
@@ -305,7 +305,8 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 
 - **`kind` 是枚举，不是自由文本**。`cta / hook / info / montage / showcase / transition` 六选一，自创名字直接被拦；改时长后 `beats` 必须重算，否则报「beats 落在场景之外」。
 - **字幕条会压住截图卡片**。`Subtitles.tsx` 占掉底部约 90px，任何卡片底边超过 y≈880 就被盖住。`Shot` 组件因此有了 `offsetY`，卡片高度也按「避开字幕带」反推。
-- **声画对齐的最后一厘米是电平**。SAPI 旁白 RMS 只有 -26 dBFS，混完人声只比音乐高 5.3 dB（规范要 ≥8）。`gen_vo.py` 现在逐句归一化到 -18 dBFS、tanh 软限幅（`--rms` 可调），复测差值 10.0 dB。
+- **声画对齐的最后一厘米是电平**。本机 SAPI 旁白 RMS 只有 -26 dBFS，混完人声只比音乐高 5.3 dB（规范要 ≥8）。`gen_vo.py` 现在逐句归一化到 -18 dBFS、tanh 软限幅（`--rms` 可调），并把 BGM 压到 0.32，实测人声比纯音乐段高 9.3 dB。
+- **SAPI 那副嗓子不能交付**。它是 2000 年代的拼接式合成，念出来的中文像机器报站。`gen_vo.py` 加了 `--engine edge`：走 edge-tts 的微软神经语音（`zh-CN-XiaoxiaoNeural` 等 8 个中文音色），同样逐句合成、掐静音、归一化，句子从 30.97s 缩到 22.71s，语速自然 5 字/秒；`--engine sapi` 保留作断网兜底。
 - **裁截图要用 2× 原图裁，且按行边界裁**。从小图再裁会被 `check_assets` 判「4K 下会糊」；按比例硬切会把卡片切成半截。
 
 素材合规在这次也定成了硬规矩：**只用公开知识库截图，打码靠裁不靠涂**——私有库（付费课程、个人笔记）一张都不进片，顶栏用户名、左栏知识库列表整片裁掉，涂抹漏一次就是把别人账号播出去。

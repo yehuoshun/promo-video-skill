@@ -18,7 +18,7 @@
   },
   "audio": {
     "bgm": "bgm.wav",
-    "volume": 0.42,
+    "volume": 0.32,
     "fadeIn": 0.3,
     "fadeOut": 1.2,
     "duck": 8,
@@ -236,61 +236,61 @@
       "id": "hook-01-1",
       "scene": "hook-01",
       "at": 0.3,
-      "dur": 3.151,
+      "dur": 2.311,
       "text": "整个仓库，一条命令搬完。",
       "file": "vo/hook-01-1.wav",
       "sha1": "dec15df01d02",
-      "rate": 3.81
+      "rate": 5.19
     },
     {
       "id": "pain-02-1",
       "scene": "pain-02",
       "at": 5.2,
-      "dur": 7.521,
+      "dur": 5.452,
       "text": "一个仓库拆开，就是 1210 个节点——手工建，一天过去了。",
       "file": "vo/pain-02-1.wav",
       "sha1": "59848fdf39a0",
-      "rate": 3.99
+      "rate": 5.5
     },
     {
       "id": "term-03-1",
       "scene": "term-03",
       "at": 13.6,
-      "dur": 5.288,
+      "dur": 3.992,
       "text": "先跑一遍空转，它把要搬的东西一条条列出来。",
       "file": "vo/term-03-1.wav",
       "sha1": "b00b4cb55778",
-      "rate": 3.97
+      "rate": 5.26
     },
     {
       "id": "tree-04-1",
       "scene": "tree-04",
       "at": 24.4,
-      "dur": 7.104,
+      "dur": 5.231,
       "text": "真跑完再看，层级一条没少：第 1 章、本章导读，都在。",
       "file": "vo/tree-04-1.wav",
       "sha1": "c1756fd7ee2c",
-      "rate": 3.8
+      "rate": 5.16
     },
     {
       "id": "cards-05-1",
       "scene": "cards-05",
       "at": 35.2,
-      "dur": 5.008,
+      "dur": 3.486,
       "text": "已经搬了七百多个库，没有一个是手拖进去的。",
       "file": "vo/cards-05-1.wav",
       "sha1": "4b23990ad095",
-      "rate": 4.19
+      "rate": 6.02
     },
     {
       "id": "cta-06-1",
       "scene": "cta-06",
       "at": 44.8,
-      "dur": 2.899,
+      "dur": 2.241,
       "text": "仓库开源，地址在下面。",
       "file": "vo/cta-06-1.wav",
       "sha1": "291803990cb5",
-      "rate": 3.79
+      "rate": 4.91
     }
   ]
 }

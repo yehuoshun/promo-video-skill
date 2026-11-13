@@ -333,4 +333,15 @@ python scripts-win\check_audio.py out\mix.wav --timing timing.json
 
 ### 17. SAPI 旁白的 RMS 只有 -26 dBFS，混完必然「人声被音乐盖」
 
-SAPI 峰值不低、平均电平低，直接混音后实测人声只比纯音乐段高 5.3 dB，规范要求 ≥8 dB。`gen_vo.py` 里加了 `normalize_rms()`：按 RMS 归一到 -18 dBFS，用 tanh 软限幅把峰值压到 -1.5 dBFS（时长不变，字幕时间轴不动），复测人声 -21 / 音乐 -31，差 10.0 dB。归一化不能放进混音脚本——放进去，`voiceLines` 的 `dur` 就和实际播出的长度对不上了。
+SAPI 峰值不低、平均电平低，直接混音后实测人声只比纯音乐段高 5.3 dB，规范要求 ≥8 dB。（音色本身也不好听——真要交付就换 `gen_vo.py --engine edge`，见第 18 条。）`gen_vo.py` 里加了 `normalize_rms()`：按 RMS 归一到 -18 dBFS，用 tanh 软限幅把峰值压到 -1.5 dBFS（时长不变，字幕时间轴不动），复测人声 -21 / 音乐 -31，差 10.0 dB。归一化不能放进混音脚本——放进去，`voiceLines` 的 `dur` 就和实际播出的长度对不上了。
+
+### 18. edge-tts：转 wav 要用 Remotion 自带的 ffmpeg
+
+`gen_vo.py --engine edge` 走 edge-tts（`pip install edge-tts`），它只吐 mp3，而后续的掐静音/归一化/混音全按 16-bit WAV 处理，
+中间得转一道。本机 `ffmpeg` 不在 PATH，所以 `find_ffmpeg()` 先找项目里的
+`node_modules\@remotion\compositor-win32-x64-msvc\ffmpeg.exe`，找不到才退回 PATH。
+
+另外两个细节：edge-tts 的语速是**百分比字符串**（`--rate +8%`）不是 -10~10 的整数，所以 `--rate` 在两种引擎下含义不同，
+`gen_vo.py` 里按 `--engine` 决定默认值（sapi `-1`，edge `+8`）；`python -m edge_tts` 需要联网，
+断网时记得回 `--engine sapi`。
+

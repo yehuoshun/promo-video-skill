@@ -17,6 +17,10 @@
     python scripts-win/gen_vo.py -Voice "Microsoft Huihui Desktop" -Rate -1
     python scripts-win/gen_vo.py --dry-run       # 只算不合成
 
+两种音源（--engine）：
+    sapi  本机 SAPI 离线合成，任何 Windows 都能跑，音色是 2000 年代的拼接式，偏机械
+    edge  微软神经语音（走 edge-tts，需联网），中文接近真人，默认音色 zh-CN-XiaoxiaoNeural
+
 timing.json 里写法（scenes[].voice，多句用 | 隔开）：
 
     { "id": "hook-01", "voice": "一句话。|第二句话。", ... }
@@ -149,6 +153,38 @@ def normalize_rms(path: Path, target_db: float = -18.0, ceiling_db: float = -1.5
     return float(20 * np.log10(gain))
 
 
+def find_ffmpeg(proj: Path) -> str:
+    """优先用项目里 Remotion 自带的 ffmpeg（本机 PATH 上没有）。"""
+    cand = proj / "node_modules" / "@remotion" / "compositor-win32-x64-msvc" / "ffmpeg.exe"
+    if cand.exists():
+        return str(cand)
+    return "ffmpeg"
+
+
+def synth_edge(text: str, out: Path, voice: str, rate_pct: int) -> None:
+    """edge-tts 合成到 mp3，再转成 44.1kHz 单声道 wav（后续步骤都按 wav 处理）。"""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    mp3 = out.with_suffix(".mp3")
+    speed = f"{rate_pct:+d}%"
+    r = subprocess.run(
+        [sys.executable, "-m", "edge_tts", "--text", text, "--voice", voice,
+         "--rate", speed, "--write-media", str(mp3)],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    if r.returncode != 0 or not mp3.exists():
+        tail = (r.stderr or r.stdout or "").strip().splitlines()[-3:]
+        raise SystemExit(f"edge-tts 合成失败（exit {r.returncode}）：{text}\n  " + "\n  ".join(tail))
+    ff = find_ffmpeg(out.parents[2])
+    conv = subprocess.run(
+        [ff, "-y", "-loglevel", "error", "-i", str(mp3),
+         "-ac", "1", "-ar", "44100", "-c:a", "pcm_s16le", str(out)],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    mp3.unlink(missing_ok=True)
+    if conv.returncode != 0 or not out.exists():
+        raise SystemExit(f"mp3 → wav 失败：{out}\n  {(conv.stderr or '').strip()[:300]}")
+
+
 def synth(text: str, out: Path, voice: str | None, rate: int) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -169,13 +205,24 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="逐句合成旁白并写回 timing.json")
     ap.add_argument("-Project", "--project", default="template", help="项目目录，默认 template")
     ap.add_argument("--timing", default=None, help="timing.json 路径，默认 <项目>/timing.json")
-    ap.add_argument("--voice", default=None, help="音色名，默认自动挑第一个中文音色")
-    ap.add_argument("--rate", type=int, default=-1, help="语速 -10~10，默认 -1（略慢）")
+    ap.add_argument("--engine", choices=["sapi", "edge"], default="sapi",
+                    help="合成引擎：sapi（离线、机械）或 edge（联网、接近真人），默认 sapi")
+    ap.add_argument("--voice", default=None,
+                    help="音色名；edge 引擎默认 zh-CN-XiaoxiaoNeural，sapi 默认自动挑第一个中文音色")
+    ap.add_argument("--rate", type=int, default=None,
+                    help="语速；sapi 为 -10~10（默认 -1），edge 为百分比（默认 +8%%）")
     ap.add_argument("--lead", type=float, default=0.3, help="每句距场景开头留多少秒，默认 0.3")
     ap.add_argument("--gap", type=float, default=0.18, help="同一个场景内两句之间的空白，默认 0.18")
     ap.add_argument("--dry-run", action="store_true", help="只算时间不合成")
     ap.add_argument("--rms", type=float, default=-18.0, help="旁白归一化目标 RMS（dBFS），默认 -18")
     args = ap.parse_args()
+
+    if args.engine == "edge":
+        args.voice = args.voice or "zh-CN-XiaoxiaoNeural"
+        if args.rate is None:
+            args.rate = 8
+    elif args.rate is None:
+        args.rate = -1
 
     proj = (ROOT / args.project).resolve() if not Path(args.project).is_absolute() else Path(args.project)
     tpath = Path(args.timing) if args.timing else proj / "timing.json"
@@ -198,7 +245,10 @@ def main() -> int:
             if args.dry_run:
                 dur = wav_duration(out) if out.exists() else 0.0
             else:
-                synth(text, out, args.voice, args.rate)
+                if args.engine == "edge":
+                    synth_edge(text, out, args.voice, args.rate)
+                else:
+                    synth(text, out, args.voice, args.rate)
                 before, dur = trim_silence(out)
                 if before - dur > 0.15:
                     print(f"  [掐静音] {lid}: {before:.2f}s → {dur:.2f}s（去掉首尾空白 {before - dur:.2f}s）")
