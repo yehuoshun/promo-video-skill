@@ -184,6 +184,10 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 
 十步：目录结构 → 环境（doctor）→ 时间轴（check_timing）→ 素材（check_assets）→ 配乐（check_audio）→ 同步（check_sync）→ 静帧（check_stills）→ 排版（probe，逐个 HTML）→ 成片（check_video）→ 编码（fix-encoding，只在 -Self 时跑）。
 
+两件本来就该做对、之前没做的事：`-Html` 可以写相对路径了（相对当前目录或体检目录都认，脚本自己转成绝对路径；找不到会当场报「找不到 HTML」并列出试过的几个路径，不用等到第 8 步才露馅）；体检目录不是片子工程（缺 `timing.json` 或 `src\scenes`）时只打一行提示就 `exit 1`，不再把九道闸门挨个跑一遍刷屏——以前那种情况下真问题（目录指错了）会被几十行连锁报错埋掉。
+
+两个兜底：`-Html` 可以写相对路径（先按当前目录、再按体检目录找，找到就转绝对；找不到当场报「找不到 HTML」并列试过哪些路径，不用等到第 8 步才发现）；体检目录压根不是片子工程（缺 `timing.json` / `src\scenes`）时只打一行提示就 `exit 1`，不再把后面九道闸门挨个跑一遍刷屏。
+
 | 命令 | 结果 |
 |---|---|
 | `scripts-win\verify.cmd template` | 3 通过 / 2 警告 / 0 失败 / 2 跳过，3.0s，exit 0（警告 = 本机没装 ffmpeg、15 秒不在 45~60 秒区间） |

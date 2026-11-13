@@ -3,6 +3,7 @@
 # 为什么要有它：到 P6 为止已经有八个闸门（环境、时间轴、素材、配乐、同步、静帧、排版、成片），
 # 但它们分散在 docs 和 AGENTS 的阶段表里，靠人记住「这一步该跑哪三个」。
 # 忘一条就等于没有——所以合成一条，一条命令出结论，任一 ERROR 就 exit 1。
+# 现在串了十道（多出编码规整，以及 layout 注册校验并进了 check_timing）。
 #
 # 用法：
 #   scripts-win\verify.cmd .                      # 体检当前目录这个项目
@@ -12,7 +13,7 @@
 #
 # 参数：
 #   -Project        项目目录（位置 0，默认 .）
-#   -Html           要跑排版探针的 HTML，可写多个；默认扫项目根目录的 *.html
+#   -Html           要跑排版探针的 HTML，可写多个（相对路径也行，脚本自己转绝对）；默认扫项目根目录的 *.html
 #   -Video          指定要验收的 mp4；默认按 final-4k → final-1080p → final → demo-* → 最新
 #   -RequireAssets  至少要有几张真实素材（默认 0 不要求；正式片按 AGENTS 写 8）
 #   -MinAssetWidth  素材最小宽度（默认 1280）
@@ -56,6 +57,42 @@ if ($Self -and $Project -eq '.') {
     # 否则在仓库根跑会先报一堆「缺 timing.json、缺 src\scenes」，把真问题淹掉。
     $tpl = Join-Path $toolRepo 'template'
     if (Test-Path -LiteralPath $tpl) { $root = (Resolve-Path -LiteralPath $tpl).Path }
+}
+
+# ---------- 先确认这是个片子工程，不是随便一个目录 ----------
+# 目录传错时立刻停：否则第 1 步报「缺 timing.json」，后面九道闸门各报一串错，
+# 最后「失败项」列一长串，真正的原因（目录错了）反而看不见。
+$mustHave = @('timing.json', 'src\scenes')
+$missingTop = @($mustHave | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_)) })
+if ($missingTop.Count) {
+    Write-Host ''
+    Write-Host ("这不是片子工程目录：" + $root) -ForegroundColor Red
+    Write-Host ("缺 " + ($missingTop -join '、') + "。") -ForegroundColor Red
+    Write-Host "新建工程用 scripts-win\new-project.cmd；体检已有片子请把目录指对。" -ForegroundColor Red
+    exit 1
+}
+
+# ---------- -Html 允许相对路径 ----------
+# 探针是另起进程跑的，工作目录不确定，相对路径到那边就找不到文件，
+# 报出来的却是「找不到 HTML」这种离原因很远的错。这里先转成绝对路径。
+if ($Html.Count) {
+    $resolvedHtml = @()
+    foreach ($h in $Html) {
+        $tries = @($h)
+        if (-not [System.IO.Path]::IsPathRooted($h)) {
+            $tries += (Join-Path $root $h)
+            $tries += (Join-Path $PWD.Path $h)
+        }
+        $hit = @($tries | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+        if (-not $hit) {
+            Write-Host ''
+            Write-Host ("找不到 HTML：$h") -ForegroundColor Red
+            Write-Host ("试过：" + ($tries -join '  ')) -ForegroundColor DarkGray
+            exit 1
+        }
+        $resolvedHtml += (Resolve-Path -LiteralPath $hit[0]).Path
+    }
+    $Html = $resolvedHtml
 }
 
 # ---------- 显示宽度（中文占两格，不然表格会歪） ----------
@@ -156,7 +193,12 @@ function Tail([string[]]$lines, [int]$n = 6) {
 function VerdictText([pscustomobject]$v, [pscustomobject]$proc) {
     if ($v.Status -ne 'PASS') {
         if ($v.Err -gt 0) { return ("{0} 个错误" -f $v.Err) }
-        return ("{0} 条警告" -f $v.Warn)
+        if ($v.Warn -gt 0) { return ("{0} 条警告" -f $v.Warn) }
+        # 退出码非 0，但输出里没有「N ERROR / M WARN」这种汇总行（fix-encoding 就只列不合规文件）。
+        # 这时候不能再写「0 条警告」——真正的原因在明细里，取第一行，抓不到就退回退出码。
+        $first = @($v.Detail | Where-Object { $_ -ne '' }) | Select-Object -First 1
+        if ($first) { return ($first.Trim() -replace '[:：]\s*$', '') }
+        return ("退出码 {0}" -f $proc.Code)
     }
     foreach ($l in $proc.Lines) { if ($l -match '结果[:：]') { return ($l.Trim() -replace '^结果[:：]\s*', '') } }
     # 有些闸门（比如 fix-encoding）没有「结果：」这行，就给最后一句
