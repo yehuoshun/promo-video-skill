@@ -4,7 +4,7 @@ import { Backdrop } from "../components/Backdrop";
 import { slots, text } from "../lib/onscreen";
 import { Rich } from "../lib/rich";
 import { theme } from "../lib/theme";
-import { keys, ramp, shake } from "../lib/anim";
+import { enter, keys, shake } from "../lib/anim";
 import type { Scene } from "../lib/timing";
 
 /**
@@ -26,13 +26,11 @@ export const Hook: React.FC<{ sc: Scene }> = ({ sc }) => {
     [f(0.9), 1],
   ]);
 
-  const kickerIn = ramp(frame, 0, 10);
-  const lineA = ramp(frame, f(0.15), 14, { from: 46, to: 0 });
-  const lineAIn = ramp(frame, f(0.15), 12);
-  const lineB = ramp(frame, f(0.55), 14, { from: 46, to: 0 });
-  const lineBIn = ramp(frame, f(0.55), 12);
-  const subIn = ramp(frame, f(1.6), 14, { from: 24, to: 0 });
-  const subOp = ramp(frame, f(1.6), 12);
+  // 入场只准用 anim.ts 的四个角色名（quiet/body/head/stage），别在这里写帧数
+  const kicker = enter(frame, 0, "quiet");
+  const lineA = enter(frame, f(0.15), "head");
+  const lineB = enter(frame, f(0.55), "head");
+  const sub = enter(frame, f(1.6), "body");
 
   // 落地的一下轻震，幅度要小，2px 就够
   const land = shake(frame, 2.2, 1.6, 3);
@@ -55,7 +53,7 @@ export const Hook: React.FC<{ sc: Scene }> = ({ sc }) => {
             display: "flex",
             alignItems: "center",
             gap: 14,
-            opacity: kickerIn,
+            opacity: kicker.opacity,
             fontSize: 18,
             letterSpacing: "0.42em",
             fontWeight: 600,
@@ -82,8 +80,8 @@ export const Hook: React.FC<{ sc: Scene }> = ({ sc }) => {
               fontWeight: 800,
               letterSpacing: "-0.02em",
               lineHeight: 1.12,
-              transform: `translateY(${lineA}px)`,
-              opacity: lineAIn,
+              transform: `translateY(${lineA.y}px)`,
+              opacity: lineA.opacity,
             }}
           >
             <Rich text={text(on.lines?.[0], "lines[0]")} />
@@ -95,8 +93,8 @@ export const Hook: React.FC<{ sc: Scene }> = ({ sc }) => {
               fontWeight: 800,
               letterSpacing: "-0.02em",
               lineHeight: 1.12,
-              transform: `translateY(${lineB}px)`,
-              opacity: lineBIn,
+              transform: `translateY(${lineB.y}px)`,
+              opacity: lineB.opacity,
             }}
           >
             <Rich text={text(on.lines?.[1], "lines[1]")} />
@@ -110,8 +108,8 @@ export const Hook: React.FC<{ sc: Scene }> = ({ sc }) => {
             lineHeight: 1.7,
             color: theme.inkSoft,
             maxWidth: 1000,
-            transform: `translateY(${subIn}px)`,
-            opacity: subOp,
+            transform: `translateY(${sub.y}px)`,
+            opacity: sub.opacity,
           }}
         >
           <Rich text={text(on.sub, "sub")} />

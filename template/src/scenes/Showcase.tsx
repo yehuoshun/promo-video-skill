@@ -4,7 +4,7 @@ import { Backdrop } from "../components/Backdrop";
 import { slots, stats, text } from "../lib/onscreen";
 import { Rich } from "../lib/rich";
 import { theme } from "../lib/theme";
-import { easeOutCubic, impulse, keys, ramp } from "../lib/anim";
+import { easeOutCubic, enter, impulse, keys, ramp } from "../lib/anim";
 import type { Scene } from "../lib/timing";
 
 const BARS = [0.34, 0.52, 0.41, 0.68, 0.57, 0.83, 0.62, 0.91];
@@ -21,10 +21,10 @@ export const Showcase: React.FC<{ sc: Scene }> = ({ sc }) => {
   const { fps } = useVideoConfig();
   const f = (s: number) => s * fps;
 
-  const frameIn = ramp(frame, 0, 20, { from: 90, to: 0 });
-  const frameOp = ramp(frame, 0, 14);
+  // 入场只准用 anim.ts 的四个角色名；scale 不是位移，仍用 ramp
+  const stage = enter(frame, 0, "stage");
   const frameScale = ramp(frame, 0, 22, { from: 0.94, to: 1 });
-  const captionOp = ramp(frame, f(0.9), 16);
+  const caption = enter(frame, f(0.9), "quiet");
 
   return (
     <AbsoluteFill style={{ fontFamily: theme.font, color: theme.ink }}>
@@ -42,8 +42,8 @@ export const Showcase: React.FC<{ sc: Scene }> = ({ sc }) => {
         {/* 浏览器框 */}
         <div
           style={{
-            transform: `translateY(${frameIn}px) scale(${frameScale})`,
-            opacity: frameOp,
+            transform: `translateY(${stage.y}px) scale(${frameScale})`,
+            opacity: stage.opacity,
             borderRadius: 18,
             border: `1px solid ${theme.line}`,
             background: "rgba(12,16,22,0.86)",
@@ -88,8 +88,7 @@ export const Showcase: React.FC<{ sc: Scene }> = ({ sc }) => {
           <div style={{ padding: "34px 38px 40px" }}>
             <div style={{ display: "flex", gap: 20 }}>
               {cards.map((s, i) => {
-                const appear = ramp(frame, f(0.35 + i * 0.22), 16, { from: 26, to: 0 });
-                const show = ramp(frame, f(0.35 + i * 0.22), 14);
+                const card = enter(frame, f(0.35 + i * 0.22), "body");
                 const n = keys(
                   frame,
                   [
@@ -108,8 +107,8 @@ export const Showcase: React.FC<{ sc: Scene }> = ({ sc }) => {
                       borderRadius: 14,
                       border: `1px solid ${theme.line}`,
                       background: theme.card,
-                      transform: `translateY(${appear}px) scale(${1 + pop})`,
-                      opacity: show,
+                      transform: `translateY(${card.y}px) scale(${1 + (card.p - 1) * 0.05 + pop})`,
+                      opacity: card.opacity,
                     }}
                   >
                     <div style={{ fontSize: 17, color: theme.inkFaint, letterSpacing: "0.08em" }}>
@@ -173,7 +172,7 @@ export const Showcase: React.FC<{ sc: Scene }> = ({ sc }) => {
           style={{
             fontSize: 28,
             color: theme.inkSoft,
-            opacity: captionOp,
+            opacity: caption.opacity,
             paddingLeft: 4,
           }}
         >

@@ -74,6 +74,8 @@ scripts-win\verify.cmd .   # 交付前体检：十道闸门一次跑完，有 ER
 **旁白与字幕也读它**：文案写在 `scenes[].voice`（`|` 分句），`scripts-win\gen_vo.py` 逐句合成 `public/vo/*.wav` 并把 `at/dur/sha1` 写回 `voiceLines`；`Subtitles.tsx` 只读 `voiceLines`，**别在场景组件里另写一份字幕时间**。`python scripts-win\check_sync.py -Project .` 查三对齐（话没说完画面就切了、两句字幕同屏、CTA 是哑的）。
 **现成效果先看 `src/effects/`**：渐变底 / 颗粒暗角 / 光扫 / 大字 / 等距卡 / 数字滚动，六个都是 `(frame, fps, opts)` 纯函数组件，直接拼进场景即可；想先看效果跑 `npm run render:effects`（18 秒样板间）。
 要动效先拼现成的，不够再往 `anim.ts` 加纯函数——不要引入会自己跑的动画库。
+
+**入场只准用 `enter(frame, at, role)`**，role 四选一：`quiet`（小字 333ms/12px）、`body`（正文卡片 467ms/24px）、`head`（大字 467ms/44px）、`stage`（大容器 667ms/88px）。别在场景里写 `ramp(frame, x, 14, {from: 46})` 这种手算帧数——那正是三个场景节奏各不一样的原因。要「有重量」的落地（卡片、按钮、大标题）传 `{ fps, feel: "spring" }`，文字别用 spring。
 **每一帧都必须由 `useCurrentFrame()` 算出来**——纯 CSS animation/transition 渲染器抓不到时间，会渲染成一堆相同的帧。
 
 ## Windows 约定

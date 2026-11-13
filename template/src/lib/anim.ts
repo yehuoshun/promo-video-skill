@@ -38,6 +38,87 @@ export function ramp(frame: number, start: number, dur: number, opts: RampOpts =
   return from + (to - from) * ease(p);
 }
 
+/**
+ * 入场的四种角色——全片只准用这四个名字，别在场景里写死帧数。
+ * 时长按 30fps 的手感定：quiet 333ms、body/head 467ms、stage 667ms；
+ * 位移按「元素有多重」分：小字 12px、正文 24px、大字 44px、大容器 88px。
+ */
+export const ENTER = {
+  quiet: { dur: 10, travel: 12 }, // kicker / overline / url / tail / caption
+  body: { dur: 14, travel: 24 }, // 正文、卡片、小注
+  head: { dur: 14, travel: 44 }, // 大字标题
+  stage: { dur: 20, travel: 88 }, // 浏览器框、整块容器
+} as const;
+
+export type EnterRole = keyof typeof ENTER;
+
+export type EnterFeel = "ease" | "spring";
+
+export interface EnterOpts {
+  /** ease（默认）走 ramp 的 easeOutCubic；spring 走下面的阻尼振子 */
+  feel?: EnterFeel;
+  /** spring 模式必须传真实 fps，不然 60fps 的片子会慢一半 */
+  fps?: number;
+  /** spring 的过冲上限，默认 1.12；父容器会裁切时调到 1 */
+  maxOver?: number;
+}
+
+export interface Enter {
+  /** 进度 0→1；spring 模式会略微超过 1（那一点就是回弹） */
+  p: number;
+  /** 位移像素，直接塞进 translateY */
+  y: number;
+  /** 透明度，比位移早 1/3 到满，避免「边淡入边爬」的糊感 */
+  opacity: number;
+}
+
+/**
+ * 一个元素的入场。位移和透明度共用同一条曲线，所以不会再出现 14/12 那种错配。
+ * 用法：const line = enter(frame, f(0.15), "head"); → { y, opacity }
+ */
+export function enter(
+  frame: number,
+  at: number,
+  role: EnterRole = "body",
+  opts: EnterOpts = {},
+): Enter {
+  const { dur, travel } = ENTER[role];
+  const { feel = "ease", fps = 30, maxOver = 1.12 } = opts;
+  const p = feel === "spring" ? spring(frame, at, { fps, maxOver }) : ramp(frame, at, dur);
+  return { p, y: (1 - p) * travel, opacity: clamp(p * 1.5) };
+}
+
+export interface SpringOpts {
+  stiffness?: number;
+  damping?: number;
+  mass?: number;
+  fps?: number;
+  maxOver?: number;
+}
+
+/**
+ * 阻尼振子：0 → 1，允许略微过冲，用来替掉手调的「弹一下」。
+ *
+ * 纯函数：从 at 帧按 1/fps 秒定步长积分到 frame 帧，同一帧永远算出同一个值，
+ * 与调用顺序无关（不要改成逐帧累加的写法，那会让渲染并行时结果漂移）。
+ * 积分单位是秒，所以 30fps 与 60fps 走的是同一段物理时间，手感一致。
+ */
+export function spring(frame: number, at: number, opts: SpringOpts = {}): number {
+  const { stiffness = 170, damping = 20, mass = 1, fps = 30, maxOver = 1.12 } = opts;
+  if (frame <= at) return 0;
+  const dt = 1 / fps;
+  const steps = Math.round(frame - at);
+  let x = 0;
+  let v = 0;
+  for (let i = 0; i < steps; i++) {
+    const a = (-stiffness * (x - 1) - damping * v) / mass;
+    v += a * dt;
+    x += v * dt;
+  }
+  // 收敛到肉眼无差时直接给 1：否则 0.0004px 的残差会让稳定帧和基线对不上
+  return Math.abs(x - 1) < 1e-3 && Math.abs(v) < 0.05 ? 1 : clamp(x, 0, maxOver);
+}
+
 /** 关键帧插值：keys(frame, [[0, 0], [30, 120], [60, 120]]) */
 export function keys(
   frame: number,

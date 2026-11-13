@@ -4,7 +4,7 @@ import { Backdrop } from "../components/Backdrop";
 import { slots, text } from "../lib/onscreen";
 import { Rich } from "../lib/rich";
 import { theme } from "../lib/theme";
-import { beatAt, ramp } from "../lib/anim";
+import { beatAt, enter, ramp } from "../lib/anim";
 import { BPM, BEAT_OFFSET, type Scene } from "../lib/timing";
 
 /**
@@ -18,11 +18,11 @@ export const Cta: React.FC<{ sc: Scene }> = ({ sc }) => {
   const { fps } = useVideoConfig();
   const f = (s: number) => s * fps;
 
-  const titleIn = ramp(frame, 0, 16, { from: 28, to: 0 });
-  const titleOp = ramp(frame, 0, 14);
+  // 入场只准用 anim.ts 的四个角色名；分隔线是「生长」不是入场，仍用 ramp
+  const title = enter(frame, 0, "head");
   const lineW = ramp(frame, f(0.3), 26, { ease: (t) => t });
-  const urlOp = ramp(frame, f(0.5), 16);
-  const tailOp = ramp(frame, f(0.9), 16);
+  const url = enter(frame, f(0.5), "quiet");
+  const tail = enter(frame, f(0.9), "quiet");
 
   const pulse = beatAt(frame, fps, BPM, BEAT_OFFSET, 0.6);
   const ringScale = 1 + pulse * 0.06;
@@ -60,8 +60,8 @@ export const Cta: React.FC<{ sc: Scene }> = ({ sc }) => {
             letterSpacing: "0.3em",
             color: theme.inkFaint,
             textTransform: "uppercase",
-            opacity: titleOp,
-            transform: `translateY(${titleIn}px)`,
+            opacity: title.opacity,
+            transform: `translateY(${title.y}px)`,
           }}
         >
           {text(on.overline, "overline")}
@@ -73,8 +73,8 @@ export const Cta: React.FC<{ sc: Scene }> = ({ sc }) => {
             fontSize: 76,
             fontWeight: 800,
             letterSpacing: "-0.01em",
-            opacity: titleOp,
-            transform: `translateY(${titleIn}px)`,
+            opacity: title.opacity,
+            transform: `translateY(${title.y}px)`,
           }}
         >
           <Rich text={text(on.title, "title")} />
@@ -97,7 +97,7 @@ export const Cta: React.FC<{ sc: Scene }> = ({ sc }) => {
             fontSize: 44,
             letterSpacing: "0.02em",
             color: theme.ink,
-            opacity: urlOp,
+            opacity: url.opacity,
           }}
         >
           {text(on.url, "url")}
@@ -108,7 +108,7 @@ export const Cta: React.FC<{ sc: Scene }> = ({ sc }) => {
             marginTop: 26,
             fontSize: 24,
             color: theme.inkFaint,
-            opacity: tailOp,
+            opacity: tail.opacity,
           }}
         >
           {text(on.tail, "tail")}

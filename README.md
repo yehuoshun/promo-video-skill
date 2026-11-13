@@ -50,7 +50,7 @@ template/              可复制的 Remotion 工程
   timing.json           分镜与时间（唯一真相）
   src/Root.tsx          1080p / 4K 两套 Composition + layout 路由
   src/lib/timing.ts     秒↔帧换算、节拍相位
-  src/lib/anim.ts       ramp / keys / impulse / shake / typed / beatAt + 缓动，全部「帧 → 值」
+  src/lib/anim.ts       enter（四个入场角色）/ spring（阻尼振子）/ ramp / keys / impulse / shake / typed / beatAt，全部「帧 → 值」
   src/effects/          六个效果组件：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动
   src/components/       Backdrop（径向光 + 网格 + 暗角 + 随拍呼吸）
   src/scenes/           Hook / Showcase / Cta / EffectsLab（样板间）
