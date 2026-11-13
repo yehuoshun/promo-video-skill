@@ -306,3 +306,31 @@ while ($pos + 8 -le $bytes.Length) {
 
 顺带记一条同时踩到的：把场景切点挪到拍点（4.35s）后，`check_timing.py` 报「不落在整帧上（130.500 帧）」。100 BPM @30fps 一拍 18 帧，但 offset 0.15s = 4.5 帧，拍网格本身就在半帧上——**踩拍和整帧不能同时满足**，只能把 offset 挪到整帧（0.1s = 第 3 帧）。`check_audio.py` 现在会主动提示这条整除关系，别等到切点报错才发现。
 
+### 14. `npm run` 之前，`npm` 本身也要写成 `npm.cmd`
+
+执行策略连 `npm.ps1` 一起拦（`因为在此系统上禁止运行脚本`）。`npm run typecheck` 同样得写 `npm.cmd run typecheck`，否则诊断输出里一条 TS 错误都看不到。
+
+### 15. Remotion 里 `public/` 的图必须过 `staticFile()`
+
+`<Img src="terminal.png" />` 在 `remotion still` 下会抛一长串 `dispatchEventForPluginEventSystem` 栈，看起来像 React 崩了，实际是图片找不到。写成 `<Img src={staticFile("terminal.png")} />` 立刻好。`render` 有时能侥幸通过，别拿它当验证手段。
+
+### 16. `check_audio.py` 只吃 WAV，而本机 ffmpeg 不在 PATH
+
+两条连着的坑：拿去测的是 mp4，脚本读不了；`ffmpeg` 命令也找不到。可用的是 Remotion 自带的那个：
+
+```
+examples\<项目>\node_modules\@remotion\compositor-win32-x64-msvc\ffmpeg.exe
+```
+
+抽音轨再测：
+
+```
+& <上面那个 ffmpeg> -y -i out\demo-1080p.mp4 -vn -ac 1 -ar 44100 out\mix.wav
+python scripts-win\check_audio.py out\mix.wav --timing timing.json
+```
+
+交付前的 loudnorm 也用同一个 exe，并且**必须加 `-ar 48000`**：不加会输出 96 kHz 音轨，`check_video.py` 打印 `mp4a 2ch 0Hz`，很容易误判成坏文件。
+
+### 17. SAPI 旁白的 RMS 只有 -26 dBFS，混完必然「人声被音乐盖」
+
+SAPI 峰值不低、平均电平低，直接混音后实测人声只比纯音乐段高 5.3 dB，规范要求 ≥8 dB。`gen_vo.py` 里加了 `normalize_rms()`：按 RMS 归一到 -18 dBFS，用 tanh 软限幅把峰值压到 -1.5 dBFS（时长不变，字幕时间轴不动），复测人声 -21 / 音乐 -31，差 10.0 dB。归一化不能放进混音脚本——放进去，`voiceLines` 的 `dur` 就和实际播出的长度对不上了。

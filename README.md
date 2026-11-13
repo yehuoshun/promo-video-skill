@@ -30,13 +30,20 @@ references/            按需加载的长文档，AI 只在对应阶段读
 scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   doctor.ps1/.cmd       环境体检：Node/npm/Python/Pillow/Chrome/git/中文字体/ffmpeg/磁盘
   shot.ps1/.cmd         HTML 截图，默认 1920×1080@2x = 3840×2160
+  grab.ps1/.cmd         抓真实网页：整页截图 / 按选择器截元素 / 等某个元素出现
+  mask.py               截图打码与裁剪：按区域裁掉敏感区、马赛克、检测超大纯色边
   new-project.ps1/.cmd  复制 template 建新项目 + 装依赖
+  gen_music.py          按 timing.json 的 BPM 生成占位配乐（四段结构 + 落拍重音）
+  gen_sfx.py            生成 whoosh / click / riser 等音效，落点来自 timing.json
+  gen_vo.py             逐句合成旁白、掐静音、RMS 归一化、时长写回 voiceLines
   check_timing.py       分镜结构、时长底线、版式重复、时间轴连续性
   check_assets.py       素材宽度、比例、重名、中文文件名、疑似小图放大
   check_stills.py       静帧体检：相邻截图差值，抓「时间轴在走、画面不动」
   check_video.py        成片体检：分辨率、时长、码率（不依赖 ffmpeg）
+  check_audio.py        混音体检：人声 vs 音乐电平差、响度、短静音
+  check_sync.py         音画字对齐：字幕窗、句子是否越场景、音效是否踩拍
   probe.ps1/.cmd/.js    排版探针：headless Chrome 量 DOM，查文字被裁 / 图片变形 / 出画 / 缺字体
-  verify.ps1/.cmd       一键体检：目录/环境/时间轴/素材/静帧/排版/成片/编码 八步汇总成一张表，有 ERROR 就 exit 1
+  verify.ps1/.cmd       一键体检：编码/环境/时间轴/素材/配乐/同步/静帧/成片 八道闸门汇总成一张表，有 ERROR 就 exit 1
   fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
@@ -48,10 +55,12 @@ template/              可复制的 Remotion 工程
   src/components/       Backdrop（径向光 + 网格 + 暗角 + 随拍呼吸）
   src/scenes/           Hook / Showcase / Cta / EffectsLab（样板间）
 examples/
+  yuque-promo/          实拍成片工程（P7）：6 场景 / 49.9s / 真实截图 + 旁白 + 配乐
   card.html             1920×1080 样张，换配色只改 3 个 CSS 变量
   bad.html              故意做错的样张（拉伸图 / 裁字 / 出画 / 缺字体），用来验证探针真的会 fail
   timing.example.json   52 秒 / 60fps / 14 场景的示例分镜（含两段快切蒙太奇）
 docs/                  给人看的：借鉴清单、踩坑记录、样帧
+  pilot/                实拍记录：需求确认单、复盘（闸门在真实规模下的 8 个问题）
 out/                   静帧、对比图、成片（不进 git）
 ```
 
@@ -277,6 +286,30 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 - **画面大字和字幕说了同一句话**。demo 第一版开场大字是「把流程写成规范」，旁白也是「把流程写成规范。」——看着像音轨串了。改成旁白说「流程不该只在脑子里。」（提出问题），大字给「把流程写成规范」（给出答案），才对得上「声音负责叙事、大字负责命中」。
 
 音效闪避也在这层：`audio.duck` 默认 8 dB，旁白说话的窗口内背景音乐按帧压到 −8 dB（上下各 0.25s 斜坡），所以「人声比音乐高 8 dB」这条不是靠手调音量撞出来的，是算出来的。
+## P7 实战：给一个真项目拍 50 秒
+
+前六个阶段的对象都是 `template/` 里那个 15 秒的假产品。**闸门在 demo 上全绿，不代表它在真片上成立**——这一阶段把 `code/yuque-import-skill`（GitHub 仓库搬进语雀）真拍了一条，成片工程在 `examples/yuque-promo/`。
+
+| 项 | 值 |
+|---|---|
+| 时长 / 帧数 | 49.9s / 1497 帧 @30fps（demo 的 3.3 倍，第一次跑真实长度） |
+| 结构 | 6 场景：大字开场 / 数字痛点 / 终端 dry-run / 语雀目录树 / 知识库列表 / CTA |
+| 真实截图 | 4 张，全部来自真实页面与真实脚本输出（终端里 1210 节点那行是 `--dry` 的原样 stdout） |
+| 旁白 / 配乐 | 6 句 SAPI 合成 + 程序生成的 BGM（100 BPM，六个切点全踩在拍上） |
+| 出片 | 1080p 14.4 MB；4K 33.2 MB（2× 超采样） |
+| `verify.cmd` | 5 通过 / 3 警告 / 0 失败 / 1 跳过 |
+
+![语雀目录树实拍：片子里出现的每一行都是真实导入结果](docs/img/pilot-tree.png)
+
+真片一上来就把闸门打出七个 ERROR，逐个修完的完整记录在 [docs/pilot/复盘.md](docs/pilot/复盘.md)，四条值得写进规范的：
+
+- **`kind` 是枚举，不是自由文本**。`cta / hook / info / montage / showcase / transition` 六选一，自创名字直接被拦；改时长后 `beats` 必须重算，否则报「beats 落在场景之外」。
+- **字幕条会压住截图卡片**。`Subtitles.tsx` 占掉底部约 90px，任何卡片底边超过 y≈880 就被盖住。`Shot` 组件因此有了 `offsetY`，卡片高度也按「避开字幕带」反推。
+- **声画对齐的最后一厘米是电平**。SAPI 旁白 RMS 只有 -26 dBFS，混完人声只比音乐高 5.3 dB（规范要 ≥8）。`gen_vo.py` 现在逐句归一化到 -18 dBFS、tanh 软限幅（`--rms` 可调），复测差值 10.0 dB。
+- **裁截图要用 2× 原图裁，且按行边界裁**。从小图再裁会被 `check_assets` 判「4K 下会糊」；按比例硬切会把卡片切成半截。
+
+素材合规在这次也定成了硬规矩：**只用公开知识库截图，打码靠裁不靠涂**——私有库（付费课程、个人笔记）一张都不进片，顶栏用户名、左栏知识库列表整片裁掉，涂抹漏一次就是把别人账号播出去。
+
 ## 怎么用
 
 ```powershell
@@ -318,6 +351,7 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 | P4 | 一条命令串起六道闸门（verify） | ✅ 正常项目 exit 0、坏项目 exit 1 并点名原因（静帧重复 / 小图放大 / 排版两个 ERROR） |
 | P5 | 声音：合成配乐 / 音效 / 离线旁白 + 拍点与音轨校验 | ✅ 配乐实测 100.0 BPM、相位偏差 -20 ms；成片带 mp4a 音轨；旁白可离线合成并单独体检 |
 | P6 | 音画字三对齐：逐句旁白 + 字幕同源 + `check_sync.py` | ✅ 四个坏样本全部 exit 1 并点名原因；三轨时间轴图一眼看出错位；顺带修掉 SAPI 尾部静音与半帧拍点 |
+| P7 | 实拍验证：把整条流程用在真项目上，拍一支 50 秒 | ✅ `examples/yuque-promo` 出 1080p/4K 成片，`verify` 0 失败；闸门在真实规模下暴露的 8 个问题已回写脚本与规范 |
 
 ## 授权与致谢
 
