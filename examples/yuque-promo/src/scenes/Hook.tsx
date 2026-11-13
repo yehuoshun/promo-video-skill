@@ -1,0 +1,118 @@
+import React from "react";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { Backdrop } from "../components/Backdrop";
+import { theme } from "../lib/theme";
+import { keys, ramp, shake } from "../lib/anim";
+
+/**
+ * 开场：大字逐行砸出。
+ * 规矩来自 references/节奏.md：
+ * - 第一屏就要说清「这是什么」，不等旁白
+ * - 第一行 0.15s 就动，别让开场空着
+ * - 强调色只用在一处，别满屏发光
+ */
+export const Hook: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const f = (s: number) => s * fps;
+
+  // 整块的轻微推入，别做成弹跳（文字弹跳会糊）
+  const blockScale = keys(frame, [
+    [0, 1.03],
+    [f(0.9), 1],
+  ]);
+
+  const kickerIn = ramp(frame, 0, 10);
+  const lineA = ramp(frame, f(0.15), 14, { from: 46, to: 0 });
+  const lineAIn = ramp(frame, f(0.15), 12);
+  const lineB = ramp(frame, f(0.55), 14, { from: 46, to: 0 });
+  const lineBIn = ramp(frame, f(0.55), 12);
+  const subIn = ramp(frame, f(1.6), 14, { from: 24, to: 0 });
+  const subOp = ramp(frame, f(1.6), 12);
+
+  // 落地的一下轻震，幅度要小，2px 就够
+  const land = shake(frame, 2.2, 1.6, 3);
+
+  return (
+    <AbsoluteFill style={{ fontFamily: theme.font, color: theme.ink }}>
+      <Backdrop />
+
+      <AbsoluteFill
+        style={{
+          padding: "0 132px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          transform: `scale(${blockScale}) translate(${land.x}px, ${land.y}px)`,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            opacity: kickerIn,
+            fontSize: 18,
+            letterSpacing: "0.42em",
+            fontWeight: 600,
+            color: theme.inkFaint,
+            textTransform: "uppercase",
+          }}
+        >
+          <span
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: "50%",
+              background: theme.accent,
+              boxShadow: `0 0 18px ${theme.accent}`,
+            }}
+          />
+          promo-video-skill
+        </div>
+
+        <div style={{ marginTop: 46 }}>
+          <div
+            style={{
+              fontSize: 108,
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.12,
+              transform: `translateY(${lineA}px)`,
+              opacity: lineAIn,
+            }}
+          >
+            把流程写成
+          </div>
+
+          <div
+            style={{
+              fontSize: 108,
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.12,
+              transform: `translateY(${lineB}px)`,
+              opacity: lineBIn,
+            }}
+          >
+            <span style={{ color: theme.accent }}>能执行</span>的规范。
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 40,
+            fontSize: 30,
+            lineHeight: 1.7,
+            color: theme.inkSoft,
+            maxWidth: 1000,
+            transform: `translateY(${subIn}px)`,
+            opacity: subOp,
+          }}
+        >
+          不是提示词，是带秒数、带配额、带闸门的施工图。
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
