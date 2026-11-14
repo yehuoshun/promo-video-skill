@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Composition, Sequence, useVideoConfig } from "remotion";
 import { Cta } from "./scenes/Cta";
-import { EffectsLab } from "./scenes/EffectsLab";
+import { EffectsLab, SEG_FRAMES, SEGMENTS } from "./scenes/EffectsLab";
 import { Hook } from "./scenes/Hook";
 import { Showcase } from "./scenes/Showcase";
 import { Soundtrack } from "./Soundtrack";
@@ -92,11 +92,13 @@ export const RemotionRoot: React.FC = () => {
         width={3840}
         height={2160}
       />
-      {/* effect kit 的样板间：六段各 3 秒，跟 timing.json 无关 */}
+      {/* effect kit 的样板间：八段各 3 秒，跟 timing.json 无关。
+          时长按 SEGMENTS.length * SEG_FRAMES 算（8 × 90 = 720 帧 = 24 秒 @30fps），
+          加段只改 EffectsLab 的 SEGMENTS，不用回来手改数字。 */}
       <Composition
         id="Effects"
         component={EffectsLab}
-        durationInFrames={540}
+        durationInFrames={SEGMENTS.length * SEG_FRAMES}
         fps={30}
         width={WIDTH}
         height={HEIGHT}

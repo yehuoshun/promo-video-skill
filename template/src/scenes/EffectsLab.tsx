@@ -1,24 +1,42 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { BigType, CountUp, FilmLook, GradientMesh, IsometricCards, LightSweep } from "../effects";
+import {
+  BigType,
+  CountUp,
+  FilmLook,
+  GradientMesh,
+  IsometricCards,
+  LightSweep,
+  Lottie,
+  Morph,
+} from "../effects";
 import { theme } from "../lib/theme";
+// 素材放 public/lottie/（发布时也在那里），这里只是把它当 JSON 对象 import 进来，
+// 因为 @remotion/lottie 要的是 animationData 对象，不是路径。
+import demoBadge from "../../public/lottie/demo-badge.json";
 
 /**
- * effect kit 的展示台：六段 × 3 秒，一段一个效果。
+ * effect kit 的展示台：八段 × 3 秒，一段一个效果。
  *
  * 这不是产品片，是给人看「这个效果长什么样、参数怎么调」的样板间，
  * 所以它不走 timing.json（不参与 check_timing 的时长/版式规则）。
  * 真正的项目里，这些效果是往 scenes/ 的组件里拼的，不是按段播放。
+ *
+ * 段数改了要同步 Root.tsx 的 Effects composition：
+ * 那里写的是 SEGMENTS.length * SEG_FRAMES（24 秒 = 720 帧 @30fps），不用手改魔数。
  */
 
-const SEG_FRAMES = 90; // 3 秒 @30fps
-const SEGMENTS = [
+export const SEG_FRAMES = 90; // 3 秒 @30fps
+
+export const SEGMENTS = [
   { name: "动态大字", en: "BIG TYPE" },
   { name: "数字滚动", en: "COUNT UP" },
   { name: "等距卡片", en: "ISOMETRIC" },
   { name: "光扫", en: "LIGHT SWEEP" },
   { name: "颗粒与暗角", en: "FILM LOOK" },
   { name: "组合用法", en: "COMBINED" },
+  { name: "矢量图标", en: "LOTTIE" },
+  { name: "形状变形", en: "MORPH" },
 ];
 
 const ISO_ITEMS = [
@@ -71,7 +89,7 @@ const BigTypeSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
       fps={fps}
       kicker="PROMO EFFECT KIT"
       lines={[{ text: "把素材" }, { text: "变成节奏。", accent: true }]}
-      sub="六个纯函数组件，全部由帧驱动。"
+      sub="八个纯函数组件，全部由帧驱动。"
       from={0.15}
     />
     <FilmLook frame={lf} />
@@ -243,6 +261,121 @@ const ComboSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
   </>
 );
 
+/**
+ * 第 7 段：Lottie。
+ *
+ * 素材是自绘的 public/lottie/demo-badge.json（授权说明见同目录 README.md）。
+ * 这一段的重点是「矢量、按帧 seek」：组件内部先把场景帧换算成素材帧，再让 lottie
+ * goToAndStop，所以第 7 段（全局帧 540+）也不会停在末帧——那是裸 <Sequence from={at}>
+ * 的经典坑（from 是相对父时间轴，不是场景内帧）。详见 effects/Lottie.tsx 的注释。
+ */
+const LottieSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
+  <>
+    <GradientMesh frame={lf} fps={fps} colors={["#05080c", "#102634", "#123029"]} opacity={1} />
+    <Lottie frame={lf} fps={fps} data={demoBadge} from={0.12} width={520} height={520} />
+    <div
+      style={{
+        position: "absolute",
+        left: 150,
+        top: 92,
+        fontFamily: theme.mono,
+        fontSize: 20,
+        letterSpacing: "0.16em",
+        color: theme.inkSoft,
+      }}
+    >
+      BODYMOVIN JSON · 按帧 SEEK
+    </div>
+    <div
+      style={{
+        position: "absolute",
+        right: 150,
+        top: 92,
+        fontFamily: theme.mono,
+        fontSize: 20,
+        letterSpacing: "0.16em",
+        color: theme.inkFaint,
+      }}
+    >
+      512 × 512 · 90 帧 · 无 rAF
+    </div>
+    <FilmLook frame={lf} grain={0.12} />
+  </>
+);
+
+/**
+ * Morph 用的两条形状：同一个 viewBox（0 0 100 100）、同为顺时针、都是单环。
+ * 顺时针和单环是 flubber 最稳的输入；点数不同它自己会补。
+ */
+const MORPH_CIRCLE =
+  "M 50 12 C 70.99 12 88 29.01 88 50 C 88 70.99 70.99 88 50 88 C 29.01 88 12 70.99 12 50 C 12 29.01 29.01 12 50 12 Z";
+const MORPH_SQUARE = "M 14 14 L 86 14 L 86 86 L 14 86 Z";
+
+/**
+ * 第 8 段：形状 morph。
+ *
+ * 大的是「圆 → 方」，右边小的是「方 → 圆」且晚 0.25 秒起步，
+ * 用来演示两个实例各自按自己的 fromAt / duration 走，互不影响（t 是纯函数）。
+ */
+const MorphSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
+  <>
+    <GradientMesh frame={lf} fps={fps} colors={["#06080c", "#173a34", "#1b2340"]} opacity={1} />
+    <Morph
+      frame={lf}
+      fps={fps}
+      from={MORPH_CIRCLE}
+      to={MORPH_SQUARE}
+      fromAt={0.3}
+      duration={1.1}
+      width={520}
+      height={520}
+      strokeWidth={2}
+    />
+    <Morph
+      frame={lf}
+      fps={fps}
+      from={MORPH_SQUARE}
+      to={MORPH_CIRCLE}
+      fromAt={0.55}
+      duration={0.9}
+      width={240}
+      height={240}
+      x={1500}
+      y={540}
+      fill="none"
+      stroke={theme.inkFaint}
+      strokeWidth={2}
+    />
+    <div
+      style={{
+        position: "absolute",
+        left: 150,
+        top: 92,
+        fontFamily: theme.mono,
+        fontSize: 20,
+        letterSpacing: "0.16em",
+        color: theme.inkSoft,
+      }}
+    >
+      CIRCLE → SQUARE · FLUBBER
+    </div>
+    <div
+      style={{
+        position: "absolute",
+        right: 150,
+        top: 92,
+        fontFamily: theme.mono,
+        fontSize: 20,
+        letterSpacing: "0.16em",
+        color: theme.inkFaint,
+      }}
+    >
+      FROMAT 0.3s · DURATION 1.1s
+    </div>
+    <FilmLook frame={lf} grain={0.12} />
+  </>
+);
+
 export const EffectsLab: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -257,6 +390,8 @@ export const EffectsLab: React.FC = () => {
       {index === 3 ? <SweepSeg lf={lf} fps={fps} /> : null}
       {index === 4 ? <FilmSeg lf={lf} fps={fps} /> : null}
       {index === 5 ? <ComboSeg lf={lf} fps={fps} /> : null}
+      {index === 6 ? <LottieSeg lf={lf} fps={fps} /> : null}
+      {index === 7 ? <MorphSeg lf={lf} fps={fps} /> : null}
       <Caption index={index} />
       <Dots index={index} />
     </AbsoluteFill>
