@@ -26,7 +26,8 @@
 用法：
     python scripts-win/check_offline.py public/offline
     python scripts-win/check_offline.py .                    # 传项目根也行，自动下探 public/offline
-    python scripts-win/check_offline.py public/offline --min-width-ratio 2
+    python scripts-win/check_offline.py public/offline --min-size-ratio 2
+    python scripts-win/check_offline.py public/offline --min-width-ratio 2   # 旧名，已弃用
     python scripts-win/check_offline.py public/offline --max-total-mb 600 --max-frame-mb 12
     python scripts-win/check_offline.py public/offline --json
 
@@ -121,26 +122,42 @@ def mb(n: float) -> float:
 
 
 def find_root(arg: str) -> Path:
-    """把用户给的路径收敛到「装着若干片段目录」的那一层。
+    """把用户给的路径收敛到「装着若干片段目录」的那一层（`public/offline`）。
 
-    三种写法都认：`public/offline`、项目根（自动下探 `public/offline`）、片段目录本身（退回上一层）。
-    都找不到就返回那个不存在的路径，交给调用方按 SKIP 处理——不能把 src/、out/
-    当片段目录刷一屏 ERROR，那是路径给错了，不是素材有问题。
+    三种入参都认，**优先级有意义**（按顺序判，先命中先用）：
+      1. 项目根 —— `<p>/public/offline` 存在就用它。项目根叫什么都不影响；
+      2. 已经在 `public/offline` 里面 —— `public/offline` 本身、某个片段目录、或更深的子目录，
+         取那个 `public/offline` 祖先。片段名恰好叫 `offline` 也照样认；
+      3. 名字兜底 —— 不在 `public/offline` 形态下的自定义目录（夹具、临时拷出来的产物）：
+         长得像片段（有 meta.json 或帧）就退回上一层由调用方当片段查；否则名字叫 `offline`
+         就当根；剩下的一律当项目根，下探 `public/offline`（多半不存在 → SKIP）。
+    找不到就返回那个不存在的路径，交给调用方按 SKIP 处理 —— 不能把 src/、out/ 当片段刷一屏
+    ERROR，那是路径给错了，不是素材有问题。
+
+    为什么不能「名字叫 offline 就当根」：项目根恰好叫 offline 时会把 `src/`、`out/` 当片段查
+    （误判 a）；而片段名就叫 offline、又被直接传进来时，会把片段自身当根、它的帧一帧都不进
+    循环（误判 b，全绿放行）。
     """
     p = Path(arg)
-    # 「名字叫 offline 的那层」直接认成根，哪怕里面躺着 meta.json —— 根上摊着 meta.json /
-    # 帧本身就是这道闸门要报的错，不能因为瞥见 meta.json 就当它是「某个片段」再往上层退一步
-    # （那样会拿 public/ 当根，把 offline 当片段，报一堆驴唇不对马嘴的缺字段）。
-    if p.name.lower() != "offline" and (p / "meta.json").is_file():
-        return p.parent
-    if p.is_dir() and p.name.lower() != "offline":
-        cand = p / "public" / "offline"
-        if cand.is_dir():
-            return cand
-        # 项目根但没建 offline；再看是不是「片段目录们」直接堆在这一层（自定义目录）
-        if not any((c / "meta.json").is_file() for c in p.iterdir() if c.is_dir()):
-            return cand
-    return p
+    # 1. 项目根：public/offline 存在，就认这一层（名字是 offline 的项目根也走这儿）
+    cand = p / "public" / "offline"
+    if cand.is_dir():
+        return cand
+    # 2. 已经在 public/offline 之下：往上找最近的那个「public/offline」形态的祖先
+    for anc in (p, *p.parents):
+        if anc.name.lower() == "offline" and anc.parent.name.lower() == "public":
+            return anc
+    # 3. 名字兜底（只看 p 自己的样子，不再猜「叫 offline 就是根」）
+    if p.is_dir():
+        frames = any(f.suffix.lower() == ".png" for f in p.iterdir() if f.is_file())
+        if (p / "meta.json").is_file() or frames:
+            return p.parent  # 长得像片段：退回上一层，让调用方按片段查
+        if p.name.lower() == "offline":
+            # 叫 offline 的可能是「自定义位置的离线根」，也可能是「恰好叫 offline 的项目根」：
+            # 项目根通常有 timing.json / package.json / src / public（哪怕还没建 public/offline）。
+            looks_like_project = any((p / q).exists() for q in ("timing.json", "package.json", "src", "public", "out"))
+            return cand if looks_like_project else p  # 项目根 → 下探（多半不存在 → SKIP）
+    return cand
 
 
 def check_segment(d: Path, args, errors: list[str], warns: list[str], notes: list[str]) -> dict:
@@ -310,8 +327,8 @@ def check_segment(d: Path, args, errors: list[str], warns: list[str], notes: lis
     # 只查宽度是漏的：显示 900×500、出图 1800×100，宽度刚好 2 倍，高度只剩五分之一，照样糊。
     # 4K 渲染是 1x 布局 zoom 2 倍，宽高两个方向都得按同一个倍数放大。
     if got and (disp_w or disp_h):
-        need_w = int(math.ceil(disp_w * args.min_width_ratio)) if disp_w else 0
-        need_h = int(math.ceil(disp_h * args.min_width_ratio)) if disp_h else 0
+        need_w = int(math.ceil(disp_w * args.min_size_ratio)) if disp_w else 0
+        need_h = int(math.ceil(disp_h * args.min_size_ratio)) if disp_h else 0
         short = [(n, w, h) for (n, w, h, _dp, _ct) in got
                  if (need_w and w < need_w) or (need_h and h < need_h)]
         if short:
@@ -324,10 +341,10 @@ def check_segment(d: Path, args, errors: list[str], warns: list[str], notes: lis
             shown = "、".join(f"frame_{n:04d}.png 是 {w}×{h}" for (n, w, h) in short[:3])
             tail = f" 等 {len(short)} 帧" if len(short) > 3 else ""
             errors.append(
-                f"{d.name}：{len(short)} 帧出图尺寸不到显示尺寸的 {args.min_width_ratio:g} 倍"
+                f"{d.name}：{len(short)} 帧出图尺寸不到显示尺寸的 {args.min_size_ratio:g} 倍"
                 f"（显示 {disp_w or '-'}×{disp_h or '-'}，要 {need_txt}）：{shown}{tail}"
-                f" —— 4K 是 1x 布局 zoom 2 倍，宽、高哪个方向不够都会糊"
-                f"（方案 4.3：按显示尺寸 2 倍出图；用 render-offline 的 -Width/-Height 重渲，别改 meta 凑数）"
+                f" —— 4K 是 1x 布局 zoom {args.min_size_ratio:g} 倍，宽、高哪个方向不够都会糊"
+                f"（方案 4.3：按显示尺寸 {args.min_size_ratio:g} 倍出图；用 render-offline 的 -Width/-Height 重渲，别改 meta 凑数）"
             )
 
     # ---- 体积 ----
@@ -360,7 +377,14 @@ def check_segment(d: Path, args, errors: list[str], warns: list[str], notes: lis
 def main() -> int:
     ap = argparse.ArgumentParser(description="离线渲染素材体检（第 11 道闸门）")
     ap.add_argument("root", help="离线素材目录（public/offline），也可传项目根或单个片段目录")
-    ap.add_argument("--min-width-ratio", type=float, default=2.0, help="出图宽、高至少是 meta.display_width/display_height 的几倍（默认 2）")
+    ap.add_argument(
+        "--min-size-ratio", type=float, default=None,
+        help="出图宽、高至少是 meta.display_width/display_height 的几倍（默认 2）",
+    )
+    ap.add_argument(
+        "--min-width-ratio", type=float, default=None,
+        help="已弃用：旧名，它一直同时管宽和高，现在叫 --min-size-ratio（只写了它也能用，会转告一声）",
+    )
     ap.add_argument("--max-frame-mb", type=float, default=12.0, help="单帧体积提示线 MB（超了只 WARN，默认 12）")
     ap.add_argument(
         "--max-total-mb", type=float, default=600.0,
@@ -368,6 +392,19 @@ def main() -> int:
     )
     ap.add_argument("--json", action="store_true", help="输出 JSON")
     args = ap.parse_args()
+
+    # --min-width-ratio 是旧名：它从第一天起就同时管宽和高（当初起名只想着宽度），
+    # 留着它是因为脚本/文档里已经有人这么写了，直接删会把别人的命令打断。
+    if args.min_width_ratio is not None:
+        if args.min_size_ratio is None:
+            print("[提示] --min-width-ratio 已改名为 --min-size-ratio（它同时管宽和高），旧名还能用，下次请改口。")
+            args.min_size_ratio = args.min_width_ratio
+        elif args.min_size_ratio != args.min_width_ratio:
+            print(f"[提示] 同时给了 --min-size-ratio={args.min_size_ratio:g} 和 --min-width-ratio={args.min_width_ratio:g}，按新名 {args.min_size_ratio:g} 算。")
+    if args.min_size_ratio is None:
+        args.min_size_ratio = 2.0
+    if args.min_size_ratio <= 0:
+        ap.error(f"--min-size-ratio 必须是正数：{args.min_size_ratio:g}")
 
     root = find_root(args.root)
     if not root.is_dir():
@@ -420,7 +457,7 @@ def main() -> int:
     print(f"目录：{root}    片段：{len(rows)} 段 / {total_frames} 帧")
     print(
         f"规则：帧号 0..N-1 连续、实际像素严格等于 meta.width×height、"
-        f"出图宽 ≥ display_width×{args.min_width_ratio:g} 且高 ≥ display_height×{args.min_width_ratio:g}、"
+        f"出图宽 ≥ display_width×{args.min_size_ratio:g} 且高 ≥ display_height×{args.min_size_ratio:g}、"
         f"meta.alpha 与 PNG 颜色类型一致、"
         f"单帧 > {args.max_frame_mb:g}MB 只 WARN、单目录 ≤ {args.max_total_mb:g}MB"
     )

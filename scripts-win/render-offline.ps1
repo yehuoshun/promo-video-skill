@@ -23,6 +23,12 @@
 #                    meta.display_width / display_height，第 11 道闸门用它查
 #                    「出图宽、高都要 ≥ 显示尺寸 × 2」——4K 是 1x 布局 zoom 2 倍，
 #                    宽或高哪个方向不够都会糊。不许猜：闸门缺了这两个字段会直接 ERROR。
+#   -MinRatio        出图至少是显示尺寸的几倍（默认 2）。只影响这里「渲完就提醒你糊了」的
+#                    预告，闸门那边对应的是 check_offline.py --min-size-ratio，两边口径要一致
+#                    （闸门调 3 时这里也传 -MinRatio 3，否则它的提示会失效）。
+#   -AllowShift      上游帧号不从 0 起时默认直接失败（渲染器丢了开头几帧 = 画面整体前移、
+#                    跟时间轴对不上，而 -Frames 只保证总帧数）。确实只渲了中段、知道自己
+#                    在挪，才加这个开关：退化成 WARN + 按顺序重排。
 #   -Keep            不清理目标目录里的上一版帧（增量补帧用；帧数变了会留旧帧）
 #
 # 渲染器契约（两条，选一条）：
@@ -49,8 +55,10 @@ param(
     [int]$Fps = 0,
     [int]$DisplayWidth = 0,
     [int]$DisplayHeight = 0,
+    [double]$MinRatio = 2,
     [string]$Command = "",
     [switch]$Keep,
+    [switch]$AllowShift,
     [switch]$Quiet
 )
 
@@ -85,6 +93,7 @@ if (($Width -le 0) -ne ($Height -le 0)) {
     Fail "-Width 和 -Height 要一起给（现在是 Width=$Width Height=$Height）；都不给就按首帧实际尺寸写 meta。"
 }
 if ($DisplayWidth -lt 0) { Fail "-DisplayWidth 不能是负数：$DisplayWidth" }
+if ($MinRatio -le 0) { Fail "-MinRatio 必须是正数（默认 2，4K 是 1x 布局 zoom 2 倍）：$MinRatio" }
 if (-not $Source) { Fail "缺 -Source：这批素材从哪来（生成脚本 / 场景名 / 素材站链接）？`nmeta.json 要记录来源，第 11 道闸门会查空值。" }
 if (-not $License) { Fail "缺 -License：授权是什么（如 自研 / CC-BY-4.0 / 客户授权）？`n第三方模型和模板常禁止商用，第 11 道闸门会查空值。" }
 
@@ -225,13 +234,18 @@ if ($numbered.Count -lt $sorted.Count) {
     Say ("注意：{0} 个文件名里没有数字，只能按文件名排序" -f ($sorted.Count - $numbered.Count)) "Yellow"
 }
 
-# 上游帧号不连续：渲染器自己丢帧（manim 偶尔因为某个 object 前几帧没出现就从 0006 起编号）时，
-# 下面「按顺序重排成 frame_0000 起」会把这段证据抹平 —— 总帧数照样对得上，内容却整体前移。
-# 判定仍交给 -Frames 与人工，这里只把证据喊出来。
+# 上游帧号不从 0 起：渲染器自己丢了开头几帧（manim 偶尔因为某个 object 前几帧没出现就从
+# 0006 起编号），下面「按顺序重排成 frame_0000 起」会把这段证据抹平 —— 总帧数照样对得上，
+# 内容却整体前移，第 11 道闸门看到的只是一串连续帧号，全绿。所以默认直接失败：
+# 宁可停下让人看一眼，也别交一段错位的画面。确实知道自己在挪（比如只渲了中段）才加 -AllowShift。
 $upNums = @($numbered | ForEach-Object { Get-FrameNo $_.FullName } | Sort-Object)
 for ($k = 0; $k -lt $upNums.Count; $k++) {
     if ($upNums[$k] -ne $k) {
-        Write-Host ("警告：上游帧号不是从 0 连续（第 {0} 帧的编号是 {1}）—— 已按顺序重排成 frame_0000 起；`n  若渲染器丢了开头几帧，画面内容会整体前移、跟时间轴对不上（-Frames 只能保证总帧数）。" -f $k, $upNums[$k]) -ForegroundColor Yellow
+        $gapMsg = "上游帧号从 {0} 起，说明渲染器丢了开头 {0} 帧；要强行接受请加 -AllowShift" -f $upNums[$k]
+        if (-not $AllowShift) {
+            Fail ($gapMsg + "`n  重排会把内容整体前移、跟时间轴对不上（-Frames 只保证总帧数，保证不了内容对位）。`n  先查渲染器为什么丢帧（manim 常见：场景时长 × fps 与 -Frames 不一致、某个 object 前几帧没出现）；确实只渲了中段就显式加 -AllowShift。`n  已停在中间目录：$staging")
+        }
+        Write-Host ("警告：" + $gapMsg + "`n  已按顺序重排成 frame_0000 起；画面内容会整体前移、跟时间轴对不上（-Frames 只能保证总帧数）。") -ForegroundColor Yellow
         break
     }
 }
@@ -295,17 +309,18 @@ foreach ($f in $sorted) {
 $tw = $Width; $th = $Height
 if ($tw -le 0) { $tw = $firstSize[0]; $th = $firstSize[1] }
 # 提前把「糊」这件事喊出来：闸门（第 11 道）会判 ERROR，但等到那一步才说，
-# 中间已经白渲了整段。宽、高两个方向都要过 2 倍 —— 只盯宽度的话，900×500 的显示配
+# 中间已经白渲了整段。宽、高两个方向都要过 $MinRatio 倍 —— 只盯宽度的话，900×500 的显示配
 # 1800×100 的出图能混过去（宽刚好 2 倍，高只剩五分之一）。
-# 判定口径仍只在 check_offline.py 一处，这里只是同一公式的提前播报。
-$needW = [int][math]::Ceiling($DisplayWidth * 2)
-$needH = [int][math]::Ceiling($DisplayHeight * 2)
+# 判定口径仍只在 check_offline.py 一处，这里只是同一公式的提前播报（倍数也跟着 -MinRatio 走，
+# 闸门调 3 时这里的提示才不会失效）。
+$needW = [int][math]::Ceiling($DisplayWidth * $MinRatio)
+$needH = [int][math]::Ceiling($DisplayHeight * $MinRatio)
 $tooSmall = @()
 if ($tw -lt $needW) { $tooSmall += ("宽 {0} < {1}" -f $tw, $needW) }
 if ($th -lt $needH) { $tooSmall += ("高 {0} < {1}" -f $th, $needH) }
 if ($tooSmall.Count) {
     # -Quiet 只压进度噪音，这种「渲完也过不了闸门」的警告照样要打出来
-    Write-Host ("警告：出图尺寸不够显示尺寸的 2 倍（{0}），4K 下放大就糊（第 11 道闸门会判 ERROR）。`n  重渲：-Width {1} -Height {2} -DisplayWidth {3} -DisplayHeight {4}；确实只要 1080p 就别放进 4K 片。" -f ($tooSmall -join '、'), $needW, $needH, $DisplayWidth, $DisplayHeight) -ForegroundColor Yellow
+    Write-Host ("警告：出图尺寸不够显示尺寸的 {0:g} 倍（{1}），4K 下放大就糊（第 11 道闸门会判 ERROR）。`n  重渲：-Width {2} -Height {3} -DisplayWidth {4} -DisplayHeight {5}；确实只要 1080p 就别放进 4K 片。`n  （这条按 -MinRatio {0:g} 算；闸门那边是 --min-size-ratio {0:g}，两边口径要一致。）" -f $MinRatio, ($tooSmall -join '、'), $needW, $needH, $DisplayWidth, $DisplayHeight) -ForegroundColor Yellow
 }
 if ($off.Count) {
     $shown = @($off | Select-Object -First 3)
