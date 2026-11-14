@@ -28,16 +28,16 @@ import demoBadge from "../../public/lottie/demo-badge.json";
 
 export const SEG_FRAMES = 90; // 3 秒 @30fps
 
-export const SEGMENTS = [
-  { name: "动态大字", en: "BIG TYPE" },
-  { name: "数字滚动", en: "COUNT UP" },
-  { name: "等距卡片", en: "ISOMETRIC" },
-  { name: "光扫", en: "LIGHT SWEEP" },
-  { name: "颗粒与暗角", en: "FILM LOOK" },
-  { name: "组合用法", en: "COMBINED" },
-  { name: "矢量图标", en: "LOTTIE" },
-  { name: "形状变形", en: "MORPH" },
-];
+/** 一段样板间：标题 + 画面组件绑在同一个条目里。 */
+export type LabSegment = {
+  name: string;
+  en: string;
+  Seg: React.FC<{ lf: number; fps: number }>;
+};
+
+// 段表 `SEGMENTS` 在文件末尾（所有段组件定义好之后），每项自带 `Seg`。
+// 标题和画面必须在同一个对象里：Caption 读 SEGMENTS[index]、画面也按同一个条目派发，
+// 换序/插段以后不可能出现「标题写 LOTTIE、画面演 MORPH」这种没人能发现的错位。
 
 const ISO_ITEMS = [
   { title: "分镜", sub: "timing.json" },
@@ -48,6 +48,7 @@ const ISO_ITEMS = [
   { title: "改版", sub: "-c:v copy 换音轨" },
 ];
 
+// SEGMENTS 在文件末尾才定义（要先有八个段组件），这里只是运行时读，没有初始化顺序问题
 const Caption: React.FC<{ index: number }> = ({ index }) => (
   <div
     style={{
@@ -314,8 +315,12 @@ const MORPH_SQUARE = "M 14 14 L 86 14 L 86 86 L 14 86 Z";
 /**
  * 第 8 段：形状 morph。
  *
- * 大的是「圆 → 方」，右边小的是「方 → 圆」且晚 0.25 秒起步，
- * 用来演示两个实例各自按自己的 fromAt / duration 走，互不影响（t 是纯函数）。
+ * 两个实例都跑满整段（`duration={3}` + `pingPong`）：大的是「圆 → 方 → 圆」，
+ * 右边小的是镜像「方 → 圆 → 方」，各自算自己的 t，互不影响（t 只是 frame 的纯函数）。
+ *
+ * 为什么不写「一次变形就完事」：QA 量过，fromAt 0.3 + duration 1.1 让变形在第 42 帧
+ * 就停了，之后 1.5 秒画面完全静止（段尾相邻帧差 0.0827，运动段 0.7814）。
+ * pingPong 把往返铺满 3 秒，段尾照样在动。
  */
 const MorphSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
   <>
@@ -325,8 +330,8 @@ const MorphSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
       fps={fps}
       from={MORPH_CIRCLE}
       to={MORPH_SQUARE}
-      fromAt={0.3}
-      duration={1.1}
+      duration={3}
+      pingPong
       width={520}
       height={520}
       strokeWidth={2}
@@ -336,8 +341,8 @@ const MorphSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
       fps={fps}
       from={MORPH_SQUARE}
       to={MORPH_CIRCLE}
-      fromAt={0.55}
-      duration={0.9}
+      duration={3}
+      pingPong
       width={240}
       height={240}
       x={1500}
@@ -357,7 +362,7 @@ const MorphSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
         color: theme.inkSoft,
       }}
     >
-      CIRCLE → SQUARE · FLUBBER
+      CIRCLE ⇄ SQUARE · FLUBBER
     </div>
     <div
       style={{
@@ -370,28 +375,38 @@ const MorphSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
         color: theme.inkFaint,
       }}
     >
-      FROMAT 0.3s · DURATION 1.1s
+      FROMAT 0s · DURATION 3s · PINGPONG
     </div>
     <FilmLook frame={lf} grain={0.12} />
   </>
 );
+
+/**
+ * 段表：顺序 = 播放顺序 = 底部 Dots 的顺序 = Caption 的编号。
+ * 每项自带画面组件，渲染处只认这一张表，不再有 `index === N` 的平行列表。
+ */
+export const SEGMENTS: LabSegment[] = [
+  { name: "动态大字", en: "BIG TYPE", Seg: BigTypeSeg },
+  { name: "数字滚动", en: "COUNT UP", Seg: CountUpSeg },
+  { name: "等距卡片", en: "ISOMETRIC", Seg: IsoSeg },
+  { name: "光扫", en: "LIGHT SWEEP", Seg: SweepSeg },
+  { name: "颗粒与暗角", en: "FILM LOOK", Seg: FilmSeg },
+  { name: "组合用法", en: "COMBINED", Seg: ComboSeg },
+  { name: "矢量图标", en: "LOTTIE", Seg: LottieSeg },
+  { name: "形状变形", en: "MORPH", Seg: MorphSeg },
+];
 
 export const EffectsLab: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const index = Math.min(SEGMENTS.length - 1, Math.floor(frame / SEG_FRAMES));
   const lf = frame - index * SEG_FRAMES;
+  // 画面和标题从同一个条目取，插段/换序不可能错位
+  const { Seg } = SEGMENTS[index];
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bg, fontFamily: theme.font, color: theme.ink }}>
-      {index === 0 ? <BigTypeSeg lf={lf} fps={fps} /> : null}
-      {index === 1 ? <CountUpSeg lf={lf} fps={fps} /> : null}
-      {index === 2 ? <IsoSeg lf={lf} fps={fps} /> : null}
-      {index === 3 ? <SweepSeg lf={lf} fps={fps} /> : null}
-      {index === 4 ? <FilmSeg lf={lf} fps={fps} /> : null}
-      {index === 5 ? <ComboSeg lf={lf} fps={fps} /> : null}
-      {index === 6 ? <LottieSeg lf={lf} fps={fps} /> : null}
-      {index === 7 ? <MorphSeg lf={lf} fps={fps} /> : null}
+      <Seg lf={lf} fps={fps} />
       <Caption index={index} />
       <Dots index={index} />
     </AbsoluteFill>

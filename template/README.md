@@ -45,7 +45,7 @@ out/                   渲染产物（不进 git）
 
 ## 效果组件（`src/effects/`）
 
-六个能直接拼进场景的组件。都只吃 `frame` 和 `fps`，没有内部状态、没有 `useEffect`、没有 CSS 动画，
+八个能直接拼进场景的组件。都只吃 `frame` 和 `fps`，没有内部状态、没有 `useEffect`、没有 CSS 动画，
 所以任意帧都能单独渲染——这是它们能被 Remotion 用、也不会让 4K 糊的前提。
 
 | 组件 | 做什么 | 常用参数 | 适合配什么语义 |
@@ -67,7 +67,7 @@ const local = frame - sceneRange(timing, "hook-01").start;
 <FilmLook frame={local} grain={0.18} />
 ```
 
-`npm run render:effects` 会渲染 `EffectsLab`——六段各 3 秒的样板间，一段一个效果（第 5 段是"左半边有颗粒、
+`npm run render:effects` 会渲染 `EffectsLab`——八段各 3 秒的样板间（共 24 秒），一段一个效果（第 5 段是"左半边有颗粒、
 右半边没有"的对照）。挑效果时先跑它，再决定往片子里拼哪些。样板间不走 `timing.json`，不参与时长与版式校验。
 
 ## 两条硬规矩

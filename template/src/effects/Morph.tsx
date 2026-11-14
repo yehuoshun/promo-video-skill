@@ -19,6 +19,8 @@ import { theme } from "../lib/theme";
  *
  * 用法：
  *   <Morph frame={lf} fps={fps} from={OLD} to={NEW} fromAt={0.3} duration={0.9} />
+ *   // 3 秒的段落里想让「整段都在动」，别只写一次变形，开 pingPong 走一圈回来：
+ *   <Morph frame={lf} fps={fps} from={OLD} to={NEW} duration={3} pingPong />
  *
  * 形状约定：两条 path 必须同一个坐标系（同一 viewBox），闭合、单环时效果最稳；
  * 点数不同不用管，flubber 会自己补点；多个环请自己拆成多个 <Morph> 叠起来。
@@ -58,9 +60,25 @@ export type MorphProps = {
   opacity?: number;
   zIndex?: number;
   /**
-   * flubber 拆曲线的粒度（viewBox 单位）。默认 0.35：
-   * 100 单位的 viewBox 拆成约 0.35 一段，放大到 520px 也看不出棱；
-   * 调大省 CPU、调小更平滑，别小于 0.1（点数爆炸，纯浪费）。
+   * 让变形「去 → 回」走一遍（圆 → 方 → 圆），此时 `duration` 是整趟往返的时长。
+   *
+   * 为什么需要它：一个 `<Morph>` 只走一次，塞进 3 秒的段里就必然「前半段在变、
+   * 后半段定死」——实测过，段尾 1.5 秒的相邻帧差掉到运动段的 1/10 以下，肉眼就是死画面。
+   * 打开 pingPong 后 t 是三角波（0 → 1 → 0），整段都有变化；曲线仍用 `ease`，
+   * 所以起止点和折返点都不会突然加速。
+   */
+  pingPong?: boolean;
+  /**
+   * flubber 拆曲线的粒度（viewBox 单位，默认 0.9）。
+   *
+   * 粒度越小越圆滑，代价是每帧的 d 字符串线性膨胀（100 单位 viewBox、520px 显示，
+   * 本机 node 26 实测这一对「圆 → 方」）：
+   *   0.1 → d 平均 146,137 字符、f(t) 2.17ms/次
+   *   0.35 → 36,527 字符、0.62ms/次（上一版默认值，33 倍于默认 10，纯浪费）
+   *   0.9 → 18,241 字符、0.27ms/次（现值）
+   *   10  → 1,104 字符、0.017ms/次（棱真的能看出来，只适合小尺寸或草稿）
+   * 0.9 在 520px 上「一段弧 ≈ 4.7px」，圆弧的弓高不足 0.02px，看不出是多边形；
+   * 再小只增加字符数和渲染时间。需要更圆就自己传更小的值，别小于 0.1。
    */
   maxSegmentLength?: number;
 };
@@ -85,7 +103,8 @@ export const Morph: React.FC<MorphProps> = ({
   rotate = 0,
   opacity = 1,
   zIndex = 20,
-  maxSegmentLength = 0.35,
+  pingPong = false,
+  maxSegmentLength = 0.9,
 }) => {
   /**
    * 只在 from/to 变化时重建插值器：flubber 建插值器要做形状配对，
@@ -97,10 +116,15 @@ export const Morph: React.FC<MorphProps> = ({
     [from, to, maxSegmentLength],
   );
 
-  // 同一帧永远算出同一个 t：ramp 自己会把 [fromAt, fromAt+duration] 之外的值夹到端点
+  // 同一帧永远算出同一个 t：单程时由 ramp 把 [fromAt, fromAt+duration] 之外的值夹到端点；
+  // pingPong 时 raw 走 0 → 1 → 0（折返点正好在中点），越界后回到 from 并停住，
+  // 两种都是对 frame 的纯函数，没有跨帧状态。
   const startFrame = fromAt * fps;
   const spanFrames = Math.max(1, duration * fps);
-  const t = clamp(ramp(frame, startFrame, spanFrames, { ease }));
+  const raw = (frame - startFrame) / spanFrames;
+  const t = pingPong
+    ? clamp(ease(clamp(1 - Math.abs(1 - 2 * raw))))
+    : clamp(ramp(frame, startFrame, spanFrames, { ease }));
 
   const d = interp(t);
 
