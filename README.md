@@ -4,7 +4,7 @@
 
 - **谁在执行**：DeepSeek（本机 agent）为主，Cursor / Claude Code 也能跑
 - **跑在哪**：Windows 优先（PowerShell），Linux / macOS 兼容
-- **现在到哪了**：P6 完成——音画字三对齐（旁白、字幕、画面讲的是同一件事，且时间上对得上）由数据结构保证、由闸门兜底；十道闸门仍收在一条 `scripts-win\verify.cmd` 里。P1 的 demo、P2 的六个效果组件、P3 的三道新闸门都在，从样帧到成片的每一步都有脚本能判真假
+- **现在到哪了**：P6 完成——音画字三对齐（旁白、字幕、画面讲的是同一件事，且时间上对得上）由数据结构保证、由闸门兜底；十一道闸门仍收在一条 `scripts-win\verify.cmd` 里。P1 的 demo、P2 的八个效果组件、P3 的三道新闸门都在，从样帧到成片的每一步都有脚本能判真假
 
 ## 为什么有这个项目
 
@@ -45,7 +45,9 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   check_audio.py        混音体检：人声 vs 音乐电平差、响度、短静音
   check_sync.py         音画字对齐：字幕窗、句子是否越场景、音效是否踩拍
   probe.ps1/.cmd/.js    排版探针：headless Chrome 量 DOM，查文字被裁 / 图片变形 / 出画 / 缺字体
-  verify.ps1/.cmd       一键体检：目录/环境/时间轴/素材/配乐/同步/静帧/排版/成片/编码 十道闸门汇总成一张表，有 ERROR 就 exit 1
+  verify.ps1/.cmd       一键体检：目录/环境/时间轴/素材/离线素材/配乐/同步/静帧/排版/成片/编码 十一道闸门汇总成一张表，有 ERROR 就 exit 1
+  render-offline.ps1/.cmd 离线渲染通道：外部渲染器（Manim / Blender / Synfig）出的帧统一成 public/offline/<片段名>/frame_0000.png + meta.json
+  check_offline.py      离线素材体检：帧号连续、尺寸与 meta 严格一致、出图宽高都 ≥ 显示尺寸×2、体积上限、license/source 非空（没有 public/offline 就 SKIP）
   fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
@@ -53,7 +55,7 @@ template/              可复制的 Remotion 工程
   src/Root.tsx          1080p / 4K 两套 Composition + layout 路由
   src/lib/timing.ts     秒↔帧换算、节拍相位
   src/lib/anim.ts       enter（四个入场角色）/ spring（阻尼振子 ζ=0.50）/ ramp / keys / impulse / shake / typed / beatAt，全部「帧 → 值」
-  src/effects/          六个效果组件：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动
+  src/effects/          八个效果组件：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 / Lottie 矢量动画 / 形状 morph
   src/components/       Backdrop（径向光 + 网格 + 暗角 + 随拍呼吸）
   src/scenes/           Hook / Showcase / Cta / EffectsLab（样板间）
 examples/               只放自包含的纯文本样张，合计 10 KB（见本节末尾说明）
@@ -109,7 +111,9 @@ out/                   静帧、对比图、成片（不进 git）
 
 ![六个效果的样板间：六段各 3 秒](docs/img/p2-effects.webp)
 
-`template/src/effects/` 里六个组件，`npm run render:effects` 出一段 18 秒样板间，每段 3 秒演一个效果（第 5 段是「左半边有颗粒、右半边没有」的对照）：
+`template/src/effects/` 里八个组件，`npm run render:effects` 出一段 24 秒样板间，每段 3 秒演一个效果（第 5 段是「左半边有颗粒、右半边没有」的对照）：
+
+> 2026-11-14 扩到八段（+ Lottie、+ 形状 morph，720 帧 / 24 秒）：下面这张图和表里 540 帧 / 5.5MB / 39.4 秒都是当年六段时的实测，没重拍。
 
 | 组件 | 做什么 | 配上什么语义才不空转 |
 |---|---|---|
@@ -348,7 +352,7 @@ npm run sheet           # 拼成 out\sheet.jpg，一张图看完全片
 npm run render       # 1080p，约 30 秒
 npm run render4k     # 4K，约 80 秒
 
-# 7. 交付前体检：一条命令跑完十道闸门，有 ERROR 就 exit 1
+# 7. 交付前体检：一条命令跑完十一道闸门，有 ERROR 就 exit 1
 scripts-win\verify.cmd .
 ```
 

@@ -69,14 +69,15 @@ npm run stills     # 批量  → out/stills/（每场景 35%/85% + 首尾帧，-
 npm run check:stills   # 相邻帧差值：< 0.05 渲了同一帧，< 0.6 那段没动
 npm run sheet      # 拼图  → out/sheet.jpg，一张图看完全片
 npm run studio     # 浏览器实时预览
-scripts-win\verify.cmd .   # 交付前体检：十道闸门一次跑完，有 ERROR 就 exit 1
+scripts-win\verify.cmd .   # 交付前体检：十一道闸门一次跑完，有 ERROR 就 exit 1
 ```
 
 时间只改 `timing.json`；**文案也只改它**（`scenes[].onscreen`，槽位见 `src/lib/timing.ts` 的 `OnscreenMap`）；场景在 `src/scenes/`（只管布局和动效，不写字）；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
 **声音也读 `timing.json`**：`audio.bgm/volume/fadeIn/fadeOut/sfx[].at`，组件在 `src/Soundtrack.tsx`。配乐不找素材、用 `scripts-win\gen_music.py` 按 BPM 合成（版权干净、可复现）；旁白用 `scripts-win\say.cmd` 离线合成。
 **旁白与字幕也读它**：文案写在 `scenes[].voice`（`|` 分句），`scripts-win\gen_vo.py` 逐句合成 `public/vo/*.wav` 并把 `at/dur/sha1` 写回 `voiceLines`；`Subtitles.tsx` 只读 `voiceLines`，**别在场景组件里另写一份字幕时间**。`python scripts-win\check_sync.py -Project .` 查三对齐（话没说完画面就切了、两句字幕同屏、CTA 是哑的）。
-**现成效果先看 `src/effects/`**：渐变底 / 颗粒暗角 / 光扫 / 大字 / 等距卡 / 数字滚动，六个都是 `(frame, fps, opts)` 纯函数组件，直接拼进场景即可；想先看效果跑 `npm run render:effects`（18 秒样板间）。
+**现成效果先看 `src/effects/`**：渐变底 / 颗粒暗角 / 光扫 / 大字 / 等距卡 / 数字滚动 / Lottie / 形状 morph，八个都是 `(frame, fps, opts)` 纯函数组件，直接拼进场景即可；想先看效果跑 `npm run render:effects`（24 秒样板间，八段各 3 秒）。
 要动效先拼现成的，不够再往 `anim.ts` 加纯函数——不要引入会自己跑的动画库。
+**外部渲染器出的帧（Manim / Blender / Synfig 这类）走离线通道**：`scripts-win\render-offline.cmd <项目> <片段名> -Frames N -Width W -Height H -DisplayWidth w -DisplayHeight h -Renderer <exe> -Args "..." -Source ... -License ...`，产物统一成 `public/offline/<片段名>/frame_0000.png` + `meta.json`（记来源与授权；帧不进 git，meta.json 必须进——授权留痕只有它）。第 11 道闸门 `check_offline.py` 查：帧号从 0000 连续、每帧尺寸严格等于 meta、出图宽高都 ≥ 布局显示尺寸×2（不然 4K 放大会糊）、体积上限、`license`/`source` 非空；项目里没有 `public/offline/` 就 SKIP。
 
 **入场只准用 `enter(frame, at, role)`**，role 四选一：`quiet`（小字 333ms/12px）、`body`（正文卡片 467ms/24px）、`head`（大字 467ms/44px）、`stage`（大容器 667ms/88px）。别在场景里写 `ramp(frame, x, 14, {from: 46})` 这种手算帧数——那正是三个场景节奏各不一样的原因。要「有重量」的落地（卡片、按钮、大标题）传 `{ fps, feel: "spring" }`；正文小字别用，12–24px 的小位移上的过冲肉眼看不见，只会让笔画发虚。
 
