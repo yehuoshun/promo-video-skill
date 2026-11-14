@@ -21,6 +21,7 @@
 ## 目录结构
 
 ```
+SKILL.md               技能入口（给 DSH / Claude Code 这类按 skill 目录发现的工具）：只有「先读什么」+ 三件最容易漏的事
 AGENTS.md              常驻规范，7.3KB（对方是 30KB）
 references/            按需加载的长文档，AI 只在对应阶段读
   需求问询.md           两轮提问清单 + 需求确认模板
