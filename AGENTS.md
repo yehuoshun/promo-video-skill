@@ -66,6 +66,8 @@ npm run render     # 1080p → out/demo-1080p.mp4
 npm run render4k   # 4K    → out/demo-4k.mp4
 npm run still      # 单帧  → out/still.png（调版式时用）
 npm run stills     # 批量  → out/stills/（每场景 35%/85% + 首尾帧，-Mid 只截中点，-Step 0.5 按秒抽）
+# 验效果在 4K 下糊不糊：npx remotion render src/index.ts Effects out/x --scale=2
+# （`render4k` 渲的是 Video + timing.json，不含 EffectsLab；Lottie/morph 只被样板间引用）
 npm run check:stills   # 相邻帧差值：< 0.05 渲了同一帧，< 0.6 那段没动
 npm run sheet      # 拼图  → out/sheet.jpg，一张图看完全片
 npm run studio     # 浏览器实时预览
@@ -76,6 +78,7 @@ scripts-win\verify.cmd .   # 交付前体检：十一道闸门一次跑完，有
 **声音也读 `timing.json`**：`audio.bgm/volume/fadeIn/fadeOut/sfx[].at`，组件在 `src/Soundtrack.tsx`。配乐不找素材、用 `scripts-win\gen_music.py` 按 BPM 合成（版权干净、可复现）；旁白用 `scripts-win\say.cmd` 离线合成。
 **旁白与字幕也读它**：文案写在 `scenes[].voice`（`|` 分句），`scripts-win\gen_vo.py` 逐句合成 `public/vo/*.wav` 并把 `at/dur/sha1` 写回 `voiceLines`；`Subtitles.tsx` 只读 `voiceLines`，**别在场景组件里另写一份字幕时间**。`python scripts-win\check_sync.py -Project .` 查三对齐（话没说完画面就切了、两句字幕同屏、CTA 是哑的）。
 **现成效果先看 `src/effects/`**：渐变底 / 颗粒暗角 / 光扫 / 大字 / 等距卡 / 数字滚动 / Lottie / 形状 morph，八个都是 `(frame, fps, opts)` 纯函数组件，直接拼进场景即可；想先看效果跑 `npm run render:effects`（24 秒样板间，八段各 3 秒）。
+Lottie 素材的动画必须**铺满整段**（`op` 与末个 keyframe 落到段尾附近），morph 要回环或让后段仍有变化——否则整段末尾是死画面，而 `check_stills` 每场景只比 35%/85% 两帧、抓不到（2026-11-14 实测：Lottie 段尾相邻帧差掉到运动段的 1/29，1.5 秒完全静止）。
 要动效先拼现成的，不够再往 `anim.ts` 加纯函数——不要引入会自己跑的动画库。
 **外部渲染器出的帧（Manim / Blender / Synfig 这类）走离线通道**：`scripts-win\render-offline.cmd <项目> <片段名> -Frames N -Width W -Height H -DisplayWidth w -DisplayHeight h -Renderer <exe> -Args "..." -Source ... -License ...`，产物统一成 `public/offline/<片段名>/frame_0000.png` + `meta.json`（记来源与授权；帧不进 git，meta.json 必须进——授权留痕只有它）。第 11 道闸门 `check_offline.py` 查：帧号从 0000 连续、每帧尺寸严格等于 meta、出图宽高都 ≥ 布局显示尺寸×2（不然 4K 放大会糊）、体积上限、`license`/`source` 非空；项目里没有 `public/offline/` 就 SKIP。
 
