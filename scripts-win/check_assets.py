@@ -32,6 +32,19 @@ if sys.platform == "win32":
 EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
 
 
+def is_offline_sequence(rel: Path) -> bool:
+    """public/offline/ 下的是外部渲染器出的 PNG 序列，不是「单张素材」，这里整体放行。
+
+    一个镜头几百帧，按单张素材的口径查只会刷屏：帧名全是 frame_0000 这种（宽度/比例
+    检查没意义）、相邻帧内容几乎重复（md5 串刷「内容重复」）、几百条 WARN 会把真正的
+    素材问题淹掉。这些帧该守的规则（帧号连续、尺寸与 meta 一致、≥ 显示宽×2、体积上限、
+    license 非空）在 check_offline.py（第 11 道闸门）里，检查口径不丢，只是换了人管。
+    """
+    parts = [q.lower() for q in rel.parts[:-1]]
+    # root 传的是 public/ 时是 offline/…；传项目根时是 public/offline/…
+    return parts[:1] == ["offline"] or (len(parts) >= 2 and parts[0] == "public" and parts[1] == "offline")
+
+
 def upscale_signature(p: Path) -> tuple[float, float, float]:
     """判断这张图是不是"小图放大"来的。
 
@@ -121,6 +134,7 @@ def main() -> int:
     # 只查交付素材：node_modules 里的图标、out/ 里的审图拼贴都不是片子素材，
     # 混进来会让「12 条 WARN」里 8 条是噪音，真正的风险反而被淹没
     and not {"node_modules", "out", "tmp", ".git"} & {part.lower() for part in p.relative_to(root).parts[:-1]}
+    and not is_offline_sequence(p.relative_to(root))
 )
     errors: list[str] = []
     warns: list[str] = []

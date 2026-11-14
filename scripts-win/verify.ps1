@@ -3,7 +3,8 @@
 # 为什么要有它：到 P6 为止已经有八个闸门（环境、时间轴、素材、配乐、同步、静帧、排版、成片），
 # 但它们分散在 docs 和 AGENTS 的阶段表里，靠人记住「这一步该跑哪三个」。
 # 忘一条就等于没有——所以合成一条，一条命令出结论，任一 ERROR 就 exit 1。
-# 现在串了十道（多出编码规整，以及 layout 注册校验并进了 check_timing）。
+# 现在串了十一道（多出编码规整、layout 注册校验并进了 check_timing、以及离线渲染素材）。
+# 第 11 道是离线渲染素材（public/offline/）：没有这个目录就 SKIP，老项目不受影响。
 #
 # 用法：
 #   scripts-win\verify.cmd .                      # 体检当前目录这个项目
@@ -295,6 +296,24 @@ if (-not (Test-Path -LiteralPath $publicDir)) {
     $sw.Stop()
     $v = Verdict $p
     Report '素材' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
+}
+
+# ---------- 离线素材（第 11 道闸门） ----------
+
+# 位置：紧跟「4. 素材」。两者是同一个口径（public/ 下的交付素材），读日志时「素材不达标」
+# 和「离线序列不达标」连在一起看最省事；check_assets.py 已经整体跳过 public/offline/**，
+# 这两条正好互补，不会同一批 PNG 被两套规则各报一遍。
+# 编号仍沿用方案文档里的「第 11 道」：既有十道的编号、顺序、判定一个字没动。
+# 没有 public/offline/ 就 SKIP —— 没走外部渲染器的老项目不该因为这道闸门变红。
+$offlineDir = Join-Path $publicDir 'offline'
+if (-not (Test-Path -LiteralPath $offlineDir)) {
+    Report '离线素材' 'SKIP' 0 '没有 public/offline/（没用外部渲染器）'
+} else {
+    $sw.Restart()
+    $p = Invoke-Proc $py @((Join-Path $here 'check_offline.py'), $offlineDir)
+    $sw.Stop()
+    $v = Verdict $p
+    Report '离线素材' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
 }
 
 # ---------- 5. 配乐 ----------

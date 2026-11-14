@@ -5,6 +5,10 @@ node_modules/
 # 渲染与中间产物
 out/
 tmp/
+# 离线渲染产物：帧是产物（几十上百 MB，靠 render-offline 一条命令重建），meta.json 是留痕，
+# 要跟着进仓库（哪来的、什么授权，新 clone 也得能查）。父目录一旦整个被 ignore，`!meta.json`
+# 这种反选就失效了，所以只能按后缀只忽略帧。
+public/offline/**/*.png
 *.mp4
 *.mov
 .DS_Store
