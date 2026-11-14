@@ -450,14 +450,34 @@ if ($Html.Count -eq 0) {
 
 # ---------- 9. 成片 ----------
 
+function Get-Mp4Duration([string]$path) {
+    # 复用 check_video.py 的 box 解析读时长（它不依赖 ffprobe）；读不出来就返回 $null ——
+    # 探测失败绝不能反过来影响判定：拿不到时长就当作「没兜底」，后面照常交给 check_video。
+    # 两个坑（都是 PS 5.1 的老毛病）：① 片段里不能有双引号，5.1 传给原生 exe 时会把引号搅乱，
+    # python 收到的是断开的字符串（报 SyntaxError）；② stderr 会被当成终止性错误（NativeCommandError）
+    # 把整份体检打断，所以 python 侧包 try/except、只往 stdout 吐结果，这里再临时放开 Stop。
+    $code = "import sys`nsys.path.insert(0, sys.argv[1])`ntry:`n    import check_video`n    d = check_video.read_duration(open(sys.argv[2], 'rb').read())`n    print('' if d is None else format(d, '.3f'))`nexcept Exception:`n    print('')"
+    $__eap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $p = Invoke-Proc $py @('-c', $code, $here, $path) } finally { $ErrorActionPreference = $__eap }
+    if ($p.Code -ne 0) { return $null }
+    $line = ($p.Lines | Where-Object { "$_".Trim() } | Select-Object -Last 1)
+    if (-not $line) { return $null }
+    $txt = "$line".Trim()
+    if (-not $txt) { return $null }
+    return [double]::Parse($txt, [System.Globalization.CultureInfo]::InvariantCulture)
+}
+
 $outDir = Join-Path $root 'out'
 $mp4 = $null
+$mp4Why = ''
 if ($Video) {
     if (-not (Test-Path -LiteralPath $Video)) { throw "找不到视频：$Video" }
     $mp4 = (Resolve-Path -LiteralPath $Video).Path
 }
 # 顺序有讲究：先交付物、再 demo，最后才「目录里最新的 mp4」。
-# 直接取最新会把样板间 out/effects.mp4（18 秒，本来就对不上 timing.json）误判成成片。
+# 直接取最新会把样板间 out/effects.mp4（24 秒，本来就对不上 timing.json）误判成成片 ——
+# 所以最后一档要排掉调试/样板间产物，还要拿 timing.json 兜一层时长：宁可 SKIP，也不拿样板间判 FAIL。
 if (-not $mp4) {
     foreach ($n in 'final-4k.mp4', 'final-1080p.mp4', 'final.mp4', 'demo-4k.mp4', 'demo-1080p.mp4', 'demo.mp4') {
         $cand = Join-Path $outDir $n
@@ -465,12 +485,33 @@ if (-not $mp4) {
     }
 }
 if (-not $mp4 -and (Test-Path -LiteralPath $outDir)) {
-    $mp4 = (Get-ChildItem -LiteralPath $outDir -Filter '*.mp4' -File -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+    $allMp4 = @(Get-ChildItem -LiteralPath $outDir -Filter '*.mp4' -File -ErrorAction SilentlyContinue)
+    # 样板间/调试产物一律不算成片：effects*（npm run render:effects 的样板间）、lab-*（试验）、
+    # *-check*（自检）、det-*（定帧）、repro*（复现）。一条正则，别再往下写五个 if。
+    $junk = '^(effects|lab-|det-|repro)|-check'
+    $keep = @($allMp4 | Where-Object { $_.Name -notmatch $junk } | Sort-Object LastWriteTime -Descending)
+    if ($keep.Count -gt 0) {
+        $mp4 = $keep[0].FullName
+        # 兜底：名字没拦下来、时长却对不上的，多半还是样板间/试验片。时长本身仍归 check_video 判，
+        # 这里只掐「差得离谱」这一种：差 >1 秒就 SKIP 并写清差多少，别让它冒充交付成片判 FAIL。
+        if ((Test-Path -LiteralPath $timingPath) -and (Test-Path -LiteralPath $mp4)) {
+            $want = $null
+            try { $want = [double](Get-Content -LiteralPath $timingPath -Raw -Encoding UTF8 | ConvertFrom-Json).duration } catch { $want = $null }
+            if ($null -ne $want -and $want -gt 0) {
+                $got = Get-Mp4Duration $mp4
+                if ($null -ne $got -and [math]::Abs($got - $want) -gt 1) {
+                    $mp4Why = "out/{0} 是 {1:N2}s，timing.json 要 {2:N2}s，不像交付成片" -f ([System.IO.Path]::GetFileName($mp4)), $got, $want
+                    $mp4 = $null
+                }
+            }
+        }
+    } elseif ($allMp4.Count -gt 0) {
+        $mp4Why = 'out/ 里只有调试/样板间产物，没有交付成片（跑 npm run render4k，或用 -Video 指定）'
+    }
 }
 
 if (-not $mp4) {
-    Report '成片' 'SKIP' 0 '没有 out/*.mp4（还没渲染）'
+    if ($mp4Why) { Report '成片' 'SKIP' 0 $mp4Why } else { Report '成片' 'SKIP' 0 '没有 out/*.mp4（还没渲染）' }
 } else {
     $argList = @((Join-Path $here 'check_video.py'), $mp4)
     if (Test-Path -LiteralPath $timingPath) { $argList += @('--timing', $timingPath) }
