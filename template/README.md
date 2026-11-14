@@ -8,7 +8,7 @@
 npm install
 npm run render          # → out/demo-1080p.mp4（15 秒 demo）
 npm run render4k        # → out/demo-4k.mp4（3840×2160）
-npm run render:effects  # → out/effects.mp4（六个效果的样板间，18 秒）
+npm run render:effects  # → out/effects.mp4（八个效果的样板间，24 秒）
 npm run still           # → out/still.png（单帧，调版式时用）
 npm run studio          # 浏览器里实时预览，改代码即时刷新
 ```
@@ -37,7 +37,7 @@ src/lib/timing.ts      读 timing.json，秒/帧换算
 src/lib/anim.ts        帧 → 值的纯函数（ramp/keys/impulse/shake/typed/beatAt）
 src/lib/theme.ts       配色与字体
 src/components/        Backdrop 等可复用外壳
-src/effects/           六个效果组件，全是 (frame, fps, opts) 纯函数
+src/effects/           八个效果组件，全是 (frame, fps, opts) 纯函数
 src/scenes/            Hook / Showcase / Cta / EffectsLab
 public/                截图、音乐、字体（原图，不压缩）
 out/                   渲染产物（不进 git）

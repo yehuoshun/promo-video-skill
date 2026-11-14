@@ -109,7 +109,7 @@ out/                   静帧、对比图、成片（不进 git）
 
 ## P2 验收结果（本机实测）
 
-![六个效果的样板间：六段各 3 秒](docs/img/p2-effects.webp)
+![六个效果的样板间：六段各 3 秒（旧图，2026-11-14 前只有六段）](docs/img/p2-effects.webp)
 
 `template/src/effects/` 里八个组件，`npm run render:effects` 出一段 24 秒样板间，每段 3 秒演一个效果（第 5 段是「左半边有颗粒、右半边没有」的对照）：
 
@@ -220,7 +220,7 @@ scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 
 - **判定规则留在各闸门里，verify 只调度和判词**：一旦把阈值抄进 verify，两边就会悄悄漂移。verify 拿到的是子脚本的 exit code 和输出原文。
 - **WARN 不拦交付，FAIL 才 exit 1**：`-Strict` 把「看情况算不算错」的项（出画、时长）升级成失败。
-- **成片的挑选顺序**：`final-4k` → `final-1080p` → `final` → `demo-4k` → `demo-1080p` → `demo` → `out/` 里最新的 mp4。少了这个顺序，`template/out/effects.mp4` 那条 18 秒样板间会被当成立片，报「时长 18.00s，期望 15.00s」。
+- **成片的挑选顺序**：`final-4k` → `final-1080p` → `final` → `demo-4k` → `demo-1080p` → `demo` → `out/` 里最新的 mp4。少了这个顺序，`template/out/effects.mp4` 那条样板间（现为 24 秒）会被当成立片，报「时长 24.00s，期望 15.00s」。
 - **`-Self` 会把根切到 `template/`**：在仓库根跑，第一步就会报「缺 timing.json」，把真问题淹掉；同时也排除 `examples\bad*.html` 这类故意做坏的反例，保证自检本身是绿的。
 
 **字体判定的修正**（P3 的一个教训）：原来按「每个族名」判，`"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif` 这种跨平台字体栈掉了一两个族名就告警——可这本来就是正确写法。现在按**整条栈**判：栈里一个族名都命中不了才报（那时浏览器用的是默认字体，字形完全不是你设计的那套）。改完 `examples\card.html` 从 3 WARN 变 0 WARN，`bad.html` 的「字体全缺」仍然抓得住。
@@ -384,7 +384,7 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 |---|---|---|
 | P0 | 骨架：精简 AGENTS.md + 4 份 references + Windows 脚本 | ✅ 空项目能出一张 1920×1080 静帧 |
 | P1 | Remotion 骨架 + 15 秒 demo（3 场景） | ✅ `npm run render` 出片，1080p / 4K 都过 `check_video.py` |
-| P2 | effect kit：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 | ✅ 6 个组件 + 18 秒样板间，`npm run render:effects` 出片过 `check_video.py` |
+| P2 | effect kit：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 | ✅ 6 个组件 + 18 秒样板间（2026-11-14 扩到 8 个 / 24 秒，见 docs/效果扩容方案.md），`npm run render:effects` 出片过 `check_video.py` |
 | P3 | 校验闸门：assets / stills / probe / video | ✅ 坏资产、压扁截图、缺字体、静止帧都能自动报错（examples\bad.html 是反例样本，跑它必 exit 1） |
 | P4 | 一条命令串起六道闸门（verify） | ✅ 正常项目 exit 0、坏项目 exit 1 并点名原因（静帧重复 / 小图放大 / 排版两个 ERROR） |
 | P5 | 声音：合成配乐 / 音效 / 离线旁白 + 拍点与音轨校验 | ✅ 配乐实测 100.0 BPM、相位偏差 -20 ms；成片带 mp4a 音轨；旁白可离线合成并单独体检 |
