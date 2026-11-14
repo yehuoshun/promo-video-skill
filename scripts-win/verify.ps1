@@ -48,7 +48,7 @@ $py = 'python'
 # 子脚本（doctor.ps1 / probe.ps1 / fix-encoding.ps1）要另起一个 PowerShell 进程跑，这里选解释器。
 # 注意：不能用 `Join-Path $PSHOME 'powershell.exe'` —— $PSHOME 是「当前宿主」的家目录，
 # 用 pwsh 7 跑本脚本时那里只有 pwsh.exe，拼出来的路径不存在，Invoke-Proc 立刻报
-# 「术语 '…\powershell.exe' 不会被识别」，第 10 道直接崩（verify.cmd 走 PS 5.1 才一直没暴露）。
+# 「术语 '…\powershell.exe' 不会被识别」，最后那道「编码」直接崩（verify.cmd 走 PS 5.1 才一直没暴露）。
 # 所以按可用性探测：powershell.exe（PS 5.1，本仓库既定口径）优先，退 pwsh.exe；
 # 两个都没有就记一句中文 ERROR、跳过这几个子检查，不抛未捕获异常。
 # 也不直接用 'powershell' 这个裸命令 —— 有的机器 PATH 里有个同名的 0 字节文件会抢先命中，
