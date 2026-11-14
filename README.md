@@ -48,7 +48,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   probe.ps1/.cmd/.js    排版探针：headless Chrome 量 DOM，查文字被裁 / 图片变形 / 出画 / 缺字体
   verify.ps1/.cmd       一键体检：目录/环境/时间轴/素材/离线素材/配乐/同步/静帧/排版/成片/编码 十一道闸门汇总成一张表，有 ERROR 就 exit 1
   render-offline.ps1/.cmd 离线渲染通道：外部渲染器（Manim / Blender / Synfig）出的帧统一成 public/offline/<片段名>/frame_0000.png + meta.json
-  check_offline.py      离线素材体检：帧号连续、尺寸与 meta 严格一致、出图宽高都 ≥ 显示尺寸的 2 倍（`--min-size-ratio` 可调，`--min-width-ratio` 是旧名）、体积上限、license/source 非空（没有 public/offline 就 SKIP）
+  check_offline.py      第 11 道闸门（编号沿用方案文档；verify 清单里它是第 5 行「离线素材」）。离线素材体检：帧号连续、尺寸与 meta 严格一致、出图宽高都 ≥ 显示尺寸的 2 倍（`--min-size-ratio` 可调，`--min-width-ratio` 是旧名）、体积上限、license/source 非空（没有 public/offline 就 SKIP）
   fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
