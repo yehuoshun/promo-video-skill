@@ -129,8 +129,8 @@ def find_root(arg: str) -> Path:
       2. 已经在 `public/offline` 里面 —— `public/offline` 本身、某个片段目录、或更深的子目录，
          取那个 `public/offline` 祖先。片段名恰好叫 `offline` 也照样认；
       3. 名字兜底 —— 不在 `public/offline` 形态下的自定义目录（夹具、临时拷出来的产物）：
-         长得像片段（有 meta.json 或帧）就退回上一层由调用方当片段查；否则名字叫 `offline`
-         就当根；剩下的一律当项目根，下探 `public/offline`（多半不存在 → SKIP）。
+         长得像片段（有 meta.json，或有 `frame_0000.png` 这种帧号文件）就退回上一层由调用方当片段查；
+         否则名字叫 `offline` 就当根；剩下的一律当项目根，下探 `public/offline`（多半不存在 → SKIP）。
     找不到就返回那个不存在的路径，交给调用方按 SKIP 处理 —— 不能把 src/、out/ 当片段刷一屏
     ERROR，那是路径给错了，不是素材有问题。
 
@@ -143,20 +143,34 @@ def find_root(arg: str) -> Path:
     cand = p / "public" / "offline"
     if cand.is_dir():
         return cand
-    # 2. 已经在 public/offline 之下：往上找最近的那个「public/offline」形态的祖先
-    for anc in (p, *p.parents):
+    # 2. 已经在 public/offline 之下：往上找最近的那个「public/offline」形态的祖先。
+    #    从**父目录**开始，不能把 p 自己算进来 —— 片段名就叫 offline 时（Name 正则允许），
+    #    它自己会命中「叫 offline、父目录叫 public」，于是把自己当根、它的帧一帧都不进循环（全绿放行）。
+    for anc in p.parents:
         if anc.name.lower() == "offline" and anc.parent.name.lower() == "public":
             return anc
     # 3. 名字兜底（只看 p 自己的样子，不再猜「叫 offline 就是根」）
     if p.is_dir():
-        frames = any(f.suffix.lower() == ".png" for f in p.iterdir() if f.is_file())
-        if (p / "meta.json").is_file() or frames:
-            return p.parent  # 长得像片段：退回上一层，让调用方按片段查
+        # 判据必须是**帧号文件名**（frame_0000.png），不能是「存在任何 .png」：
+        # 项目根放一张 cover.png / logo.png 就会让 `check_offline.py .` 往上扫，把兄弟目录
+        # 全当片段报一屏「缺 meta.json」（老版本这里是 SKIP 的）。
+        frames = any(FRAME_RE.match(f.name) for f in p.iterdir() if f.is_file())
+        has_meta = (p / "meta.json").is_file()
+        subdirs = [c for c in p.iterdir() if c.is_dir() and not c.name.startswith(".")]
         if p.name.lower() == "offline":
             # 叫 offline 的可能是「自定义位置的离线根」，也可能是「恰好叫 offline 的项目根」：
             # 项目根通常有 timing.json / package.json / src / public（哪怕还没建 public/offline）。
-            looks_like_project = any((p / q).exists() for q in ("timing.json", "package.json", "src", "public", "out"))
-            return cand if looks_like_project else p  # 项目根 → 下探（多半不存在 → SKIP）
+            if any((p / q).exists() for q in ("timing.json", "package.json", "src", "public", "out")):
+                return cand  # 项目根 → 下探（多半不存在 → SKIP）
+            # 里面已经分出子目录了，那它就是个「装着片段」的根，哪怕根上还摊着 meta.json/散帧 ——
+            # 那些交给 main() 的「根上直接放着文件」去报，这里不能把它降级成一个片段。
+            if subdirs:
+                return p
+            if has_meta or frames:
+                return p.parent  # 片段正好叫 offline、又被直接传进来：退回上一层按片段查
+            return p
+        if has_meta or frames:
+            return p.parent  # 长得像片段：退回上一层，让调用方按片段查
     return cand
 
 
@@ -379,7 +393,7 @@ def main() -> int:
     ap.add_argument("root", help="离线素材目录（public/offline），也可传项目根或单个片段目录")
     ap.add_argument(
         "--min-size-ratio", type=float, default=None,
-        help="出图宽、高至少是 meta.display_width/display_height 的几倍（默认 2）",
+        help="出图宽、高至少是 meta.display_width/display_height 的几倍（默认 2，不能小于 1：出图比显示尺寸小必然糊）",
     )
     ap.add_argument(
         "--min-width-ratio", type=float, default=None,
@@ -403,8 +417,18 @@ def main() -> int:
             print(f"[提示] 同时给了 --min-size-ratio={args.min_size_ratio:g} 和 --min-width-ratio={args.min_width_ratio:g}，按新名 {args.min_size_ratio:g} 算。")
     if args.min_size_ratio is None:
         args.min_size_ratio = 2.0
-    if args.min_size_ratio <= 0:
-        ap.error(f"--min-size-ratio 必须是正数：{args.min_size_ratio:g}")
+    # nan 必须单独挡：`nan <= 0` 是 False，`nan < 1` 也是 False，一路算到 int(ceil(nan*…)) 才抛
+    # ValueError 的 traceback（用户看到的是栈，不是人话）。inf 同理。
+    ratio = args.min_size_ratio
+    if isinstance(ratio, bool) or not isinstance(ratio, (int, float)) or not math.isfinite(ratio):
+        ap.error(f"--min-size-ratio 必须是有限的数字（nan / inf 不算数）：{ratio!r}")
+    # 下限 1：出图比布局显示尺寸还小，放大必然糊，这种倍率放进来的绿是假绿。
+    if ratio < 1:
+        ap.error(
+            f"--min-size-ratio 不能小于 1：{ratio:g}"
+            f" —— 出图比布局显示尺寸还小，放上去只会糊；只在 1080p 片子里用的话传 1，"
+            f"4K 片子按 2（1x 布局 zoom 2 倍）"
+        )
 
     root = find_root(args.root)
     if not root.is_dir():
@@ -429,14 +453,15 @@ def main() -> int:
         shown = "、".join(p.name for p in flat[:5])
         tail = f" 等 {len(flat)} 个" if len(flat) > 5 else ""
         errors.append(
-            f"public/offline/ 根上直接放着文件：{shown}{tail}"
+            f"{root.name}/ 根上直接放着文件：{shown}{tail}"
             f" —— 片段必须一个子目录一个（public/offline/<name>/frame_0000.png + meta.json）；"
             f"摊在根上的帧没有 meta 也没有 license，闸门连片段都认不出来"
         )
         if any(p.name.lower() == "meta.json" for p in flat):
             errors.append(
-                "public/offline/meta.json 不属于任何片段 —— meta 必须和帧一起放进 public/offline/<name>/，"
-                "根上这份没有任何代码会读到（Remotion 拼的是 offline/<name>/frame_0000.png）"
+                f"{root.name}/meta.json 不属于任何片段 —— meta 必须和帧一起放进片段目录"
+                f"（public/offline/<name>/meta.json），根上这份没有任何代码会读到"
+                f"（Remotion 拼的是 offline/<name>/frame_0000.png）"
             )
     for d in segs:
         rows.append(check_segment(d, args, errors, warns, notes))
