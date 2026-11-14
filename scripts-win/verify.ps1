@@ -45,9 +45,20 @@ $swAll = [System.Diagnostics.Stopwatch]::StartNew()
 $here = $PSScriptRoot
 $toolRepo = Split-Path -Parent $here          # 工具仓库根（scripts-win 的上一层）
 $py = 'python'
-# 注意：不要直接用 'powershell' —— 有的机器 PATH 里有个同名的 0 字节文件会抢先命中，
-# 报「无法在管道中间运行文档」。用 $PSHOME 下的全路径最稳。
-$psExe = Join-Path $PSHOME 'powershell.exe'
+# 子脚本（doctor.ps1 / probe.ps1 / fix-encoding.ps1）要另起一个 PowerShell 进程跑，这里选解释器。
+# 注意：不能用 `Join-Path $PSHOME 'powershell.exe'` —— $PSHOME 是「当前宿主」的家目录，
+# 用 pwsh 7 跑本脚本时那里只有 pwsh.exe，拼出来的路径不存在，Invoke-Proc 立刻报
+# 「术语 '…\powershell.exe' 不会被识别」，第 10 道直接崩（verify.cmd 走 PS 5.1 才一直没暴露）。
+# 所以按可用性探测：powershell.exe（PS 5.1，本仓库既定口径）优先，退 pwsh.exe；
+# 两个都没有就记一句中文 ERROR、跳过这几个子检查，不抛未捕获异常。
+# 也不直接用 'powershell' 这个裸命令 —— 有的机器 PATH 里有个同名的 0 字节文件会抢先命中，
+# 报「无法在管道中间运行文档」；Get-Command 拿到的 .Source 是全路径。
+$psExe = ''
+foreach ($cand in @('powershell.exe', 'pwsh.exe')) {
+    $cmd = Get-Command $cand -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cmd) { $psExe = $cmd.Source; break }
+}
+$psMissing = '找不到 powershell.exe 也找不到 pwsh.exe，起不了子进程；这一道没法检查（装个 PowerShell 再跑）'
 
 function Resolve-Dir([string]$p) {
     if (-not (Test-Path -LiteralPath $p)) { throw "找不到目录：$p" }
@@ -156,6 +167,18 @@ function Invoke-Proc([string]$exe, [string[]]$argList) {
     }
 }
 
+function Invoke-PsChild([string]$what, [string[]]$argList) {
+    # 跑子脚本（doctor / probe / fix-encoding）的统一入口。$psExe 空着的时候不能硬调 ——
+    # `& '' @argList` 在 $ErrorActionPreference='Stop' 下会抛未捕获异常，把整份体检打断；
+    # 这里返回一个「跑不起来」的假结果（退出码 127 + 一句中文），Verdict 会判成 ERROR，
+    # 明细里就是那句原话，汇总里正常计数、exit 1，没说谎也没崩。
+    if (-not $psExe) {
+        $msg = "跳过{0}：{1}" -f $what, $psMissing
+        return [pscustomobject]@{ Code = 127; Lines = @($msg); Text = $msg; Ms = 0.0 }
+    }
+    return Invoke-Proc $psExe $argList
+}
+
 # ---------- 结果收集 ----------
 
 $results = New-Object System.Collections.ArrayList
@@ -261,7 +284,7 @@ if ($timing -and $timing.PSObject.Properties['height'] -and $timing.height) { $p
 if (-not $SkipEnv) {
     $doctor = Join-Path $here 'doctor.ps1'
     $sw.Restart()
-    $p = Invoke-Proc $psExe @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $doctor)
+    $p = Invoke-PsChild '环境体检' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $doctor)
     $sw.Stop()
     $v = Verdict $p
     $line = ($p.Lines | Where-Object { $_ -match '体检结果' } | Select-Object -Last 1)
@@ -403,7 +426,7 @@ if ($Html.Count -eq 0) {
         if ($Strict) { $argList += '-Strict' }
         if ($Chrome) { $argList += @('-Chrome', $Chrome) }
         $sw.Restart()
-        $p = Invoke-Proc $psExe $argList
+        $p = Invoke-PsChild '排版' $argList
         $sw.Stop()
         $totalMs += $sw.Elapsed.TotalMilliseconds
         $names += [System.IO.Path]::GetFileName($h)
@@ -464,7 +487,7 @@ if ($Self) {
     $fix = Join-Path $here 'fix-encoding.ps1'
     if (Test-Path -LiteralPath $fix) {
         $sw.Restart()
-        $p = Invoke-Proc $psExe @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $fix, $toolRepo, '-Check')
+        $p = Invoke-PsChild '编码' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $fix, $toolRepo, '-Check')
         $sw.Stop()
         $v = Verdict $p
         Report '编码' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
