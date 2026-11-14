@@ -79,11 +79,11 @@ Write-Host "  3. cd $target; npm run studio`t# 边改边看（不出片）"
 if ($inRepo) {
     Write-Host "  4. npm run stills`t# 按时间轴截到 out\stills\，再 npm run check:stills / npm run sheet 审图"
     Write-Host "  5. npm run render`t# 1080p 出片；4K 用 npm run render4k"
-    Write-Host "  6. ..\scripts-win\verify.cmd .`t# 交付前体检，十道闸门，有 ERROR 就 exit 1"
+    Write-Host "  6. ..\scripts-win\verify.cmd .`t# 交付前体检，十一道闸门，有 ERROR 就 exit 1"
 } else {
     Write-Host "  4. `"$sw\stills.cmd`" .`t# 按时间轴截到 out\stills\"
     Write-Host "     python `"$sw\check_stills.py`" out\stills`t# 相邻帧差值，0 ERROR 才过"
     Write-Host "     python `"$sw\sheet.py`" --dir out\stills --cols 3`t# 拼成一张图看"
     Write-Host "  5. npm run render`t# 1080p 出片；4K 用 npm run render4k"
-    Write-Host "  6. `"$sw\verify.cmd`" .`t# 交付前体检，十道闸门，有 ERROR 就 exit 1"
+    Write-Host "  6. `"$sw\verify.cmd`" .`t# 交付前体检，十一道闸门，有 ERROR 就 exit 1"
 }

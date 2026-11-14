@@ -103,7 +103,7 @@ def check_onscreen(on, tag: str, errors: list[str], warns: list[str]) -> None:
 
 
 # ---- layout 注册表 ----
-# timing.json 里把 layout 名写错一个字母，十道闸门全绿，渲染出来却是一块红底
+# timing.json 里把 layout 名写错一个字母，十一道闸门全绿，渲染出来却是一块红底
 # 「layout="xxx" 没有对应组件」的 Missing 屏——这是最容易漏的一类错。
 # 所以直接读 src/Root.tsx 的 LAYOUTS 键集合来对，而不是维护第二份手抄清单。
 LAYOUTS_RE = re.compile(r"const\s+LAYOUTS\b[^=]*=\s*\{(.*?)\n\};", re.S)
