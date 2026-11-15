@@ -1,5 +1,5 @@
 import React from "react";
-import { keys, easeOutCubic } from "../lib/anim";
+import { keys, easeOutCubic, type Ease } from "../lib/anim";
 
 export type CountUpProps = {
   frame: number;
@@ -10,6 +10,8 @@ export type CountUpProps = {
   start?: number;
   /** 滚多少秒 */
   duration?: number;
+  /** 缓动，默认 easeOutCubic（前快后慢）；要「整段每一帧都在动」的演示可传 easeInOutCubic */
+  ease?: Ease;
   decimals?: number;
   /** 千分位逗号 */
   group?: boolean;
@@ -42,6 +44,7 @@ export const CountUp: React.FC<CountUpProps> = ({
   value,
   start = 0,
   duration = 1.1,
+  ease = easeOutCubic,
   decimals = 0,
   group = true,
   prefix = "",
@@ -58,7 +61,7 @@ export const CountUp: React.FC<CountUpProps> = ({
       [at, 0],
       [at + dur, value],
     ],
-    easeOutCubic,
+    ease,
   );
 
   // 滚完的那一下：先弹大一点点，再回到 1

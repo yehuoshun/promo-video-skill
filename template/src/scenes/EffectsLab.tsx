@@ -10,6 +10,7 @@ import {
   Lottie,
   Morph,
 } from "../effects";
+import { easeInOutCubic } from "../lib/anim";
 import { theme } from "../lib/theme";
 // 素材放 public/lottie/（发布时也在那里），这里只是把它当 JSON 对象 import 进来，
 // 因为 @remotion/lottie 要的是 animationData 对象，不是路径。
@@ -99,9 +100,11 @@ const BigTypeSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
 
 const CountUpSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => {
   const stats = [
-    { value: 128, suffix: "", label: "个场景样例" },
-    { value: 99.6, suffix: "%", decimals: 1, label: "自动闸门覆盖" },
-    { value: 3600, suffix: "", label: "帧级可复现" },
+    // 计数铺满整段：三段都在 2.86 秒左右收敛，尾段（1.5~3.0 秒）仍在滚，
+    // 不留「滚到一半就定版」的静帧（check_motion 量到过段尾比值 0.027）。
+    { value: 128, suffix: "", label: "个场景样例", start: 0.08, duration: 2.78 },
+    { value: 99.6, suffix: "%", decimals: 1, label: "自动闸门覆盖", start: 0.2, duration: 2.66 },
+    { value: 3600, suffix: "", label: "帧级可复现", start: 0.32, duration: 2.54 },
   ];
   return (
     <>
@@ -116,7 +119,9 @@ const CountUpSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => {
                 value={s.value}
                 decimals={s.decimals ?? 0}
                 suffix={s.suffix}
-                start={0.25 + i * 0.22}
+                start={s.start}
+                duration={s.duration}
+                ease={easeInOutCubic}
                 size={i === 0 ? 132 : 108}
                 color={i === 0 ? theme.accent : theme.ink}
               />
@@ -155,33 +160,66 @@ const SweepSeg: React.FC<{ lf: number; fps: number }> = ({ lf, fps }) => (
         background: "radial-gradient(circle at 50% 50%, rgba(142,240,200,0.07), transparent 58%)",
       }}
     />
-    <AbsoluteFill
-      style={{
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column",
-        gap: 26,
-        fontFamily: theme.font,
-      }}
-    >
-      <div style={{ fontSize: 22, letterSpacing: "0.34em", color: theme.inkFaint, fontFamily: theme.mono }}>
-        LIGHT SWEEP
-      </div>
-      <div style={{ fontSize: 58, color: theme.ink, fontFamily: theme.mono }}>
-        github.com/yehuoshun/promo-video-skill
+    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+      {/* 扫光在卡片里扫，而不是整屏掠一遍：真实用法就是「掠过一块 UI」。
+          舞台收窄后光带相对卡片更宽、行程更短，四遍 1.6 秒的扫光错开 0.8 秒、
+          首尾相接，整段每一帧都有光在走——原来整屏 0.85 秒扫一遍，剩下 2 秒多
+          全是静图（check_motion 判 80/89 帧对几乎没动）。 */}
+      <div
+        style={{
+          position: "relative",
+          width: 600,
+          height: 400,
+          borderRadius: 24,
+          overflow: "hidden",
+          border: `1px solid ${theme.line}`,
+          background: theme.card,
+          boxShadow: "0 30px 80px rgba(0, 0, 0, 0.45)",
+        }}
+      >
+        {/* 四遍 1.6 秒的扫光、每遍错开 0.8 秒：任意时刻都有两遍在跑，至少一遍在
+            中段（easeInOutCubic 两头慢，只靠一遍会在段中段掉回静图）。 */}
+        <LightSweep frame={lf} fps={fps} start={0} duration={1.6} angle={16} width={380} strength={0.95} />
+        <LightSweep
+          frame={lf}
+          fps={fps}
+          start={0.8}
+          duration={1.6}
+          angle={20}
+          width={340}
+          strength={0.8}
+          color="rgba(142,240,200,0.85)"
+        />
+        <LightSweep frame={lf} fps={fps} start={1.6} duration={1.6} angle={14} width={380} strength={0.85} />
+        <LightSweep
+          frame={lf}
+          fps={fps}
+          start={2.4}
+          duration={1.6}
+          angle={18}
+          width={340}
+          strength={0.7}
+          color="rgba(142,240,200,0.85)"
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 20,
+            fontFamily: theme.font,
+          }}
+        >
+          <div style={{ fontSize: 18, letterSpacing: "0.34em", color: theme.inkFaint, fontFamily: theme.mono }}>
+            LIGHT SWEEP
+          </div>
+          <div style={{ fontSize: 23, color: theme.ink, fontFamily: theme.mono }}>github.com/yehuoshun/promo-video-skill</div>
+        </div>
       </div>
     </AbsoluteFill>
-    {/* 两次扫过，间隔 1.2 秒：一次太单调，三次又吵 */}
-    <LightSweep frame={lf} fps={fps} start={0.45} duration={0.85} strength={0.62} width={480} />
-    <LightSweep
-      frame={lf}
-      fps={fps}
-      start={1.75}
-      duration={0.85}
-      strength={0.45}
-      width={480}
-      color="rgba(142,240,200,0.9)"
-    />
     <FilmLook frame={lf} grain={0.1} vignette={0.4} />
   </>
 );
