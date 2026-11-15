@@ -128,9 +128,15 @@ def find_root(arg: str) -> Path:
       1. 项目根 —— `<p>/public/offline` 存在就用它。项目根叫什么都不影响；
       2. 已经在 `public/offline` 里面 —— `public/offline` 本身、某个片段目录、或更深的子目录，
          取那个 `public/offline` 祖先。片段名恰好叫 `offline` 也照样认；
-      3. 名字兜底 —— 不在 `public/offline` 形态下的自定义目录（夹具、临时拷出来的产物）：
-         长得像片段（有 meta.json，或有 `frame_0000.png` 这种帧号文件）就退回上一层由调用方当片段查；
-         否则名字叫 `offline` 就当根；剩下的一律当项目根，下探 `public/offline`（多半不存在 → SKIP）。
+      3. 名字兜底 —— 不在 `public/offline` 形态下的目录（夹具、临时拷出来的产物、自定义位置的
+         离线根）：
+         a) 有子目录、且子目录长得像片段（含 meta.json，或有 `frame_0000.png` 这类帧号帧）
+            → p 就是「装着片段的根」，**根叫什么都行**（`assets/offline-seq/` 也认）；
+         b) 有 meta.json、或本身就是帧号帧 → 长得像片段，退回上一层由调用方按片段查；
+         c) 名字叫 `offline` 的再按「项目根 / 根 / 片段」细分；
+         d) 剩下的一律当项目根，下探 `public/offline`（多半不存在 → SKIP）。
+        项目根的标志物（timing.json / package.json / src / public / out）优先级高于 a)：否则
+        `check_offline.py .` 会停在项目根上把 `src/`、`out/` 当片段查。
     找不到就返回那个不存在的路径，交给调用方按 SKIP 处理 —— 不能把 src/、out/ 当片段刷一屏
     ERROR，那是路径给错了，不是素材有问题。
 
@@ -149,7 +155,7 @@ def find_root(arg: str) -> Path:
     for anc in p.parents:
         if anc.name.lower() == "offline" and anc.parent.name.lower() == "public":
             return anc
-    # 3. 名字兜底（只看 p 自己的样子，不再猜「叫 offline 就是根」）
+    # 3. 名字兜底（只看 p 自己的样子）
     if p.is_dir():
         # 判据必须是**帧号文件名**（frame_0000.png），不能是「存在任何 .png」：
         # 项目根放一张 cover.png / logo.png 就会让 `check_offline.py .` 往上扫，把兄弟目录
@@ -157,10 +163,20 @@ def find_root(arg: str) -> Path:
         frames = any(FRAME_RE.match(f.name) for f in p.iterdir() if f.is_file())
         has_meta = (p / "meta.json").is_file()
         subdirs = [c for c in p.iterdir() if c.is_dir() and not c.name.startswith(".")]
+        # 子目录「长得像片段」：自带 meta.json，或自带 frame_0000.png 这类帧号帧。
+        # 这是判断「p 是不是装着片段的根」的通则 —— 根叫什么名字都行（R-b：自定义离线根
+        # `assets/offline-seq/` 这种以前会被整段 SKIP 掉）。
+        seg_like = [
+            c for c in subdirs
+            if (c / "meta.json").is_file()
+            or any(FRAME_RE.match(f.name) for f in c.iterdir() if f.is_file())
+        ]
+        # 项目根的标志物：有这些就不往「根」上猜，让调用方下探 public/offline（没有就 SKIP）。
+        is_project = any((p / q).exists() for q in ("timing.json", "package.json", "src", "public", "out"))
         if p.name.lower() == "offline":
             # 叫 offline 的可能是「自定义位置的离线根」，也可能是「恰好叫 offline 的项目根」：
             # 项目根通常有 timing.json / package.json / src / public（哪怕还没建 public/offline）。
-            if any((p / q).exists() for q in ("timing.json", "package.json", "src", "public", "out")):
+            if is_project:
                 return cand  # 项目根 → 下探（多半不存在 → SKIP）
             # 里面已经分出子目录了，那它就是个「装着片段」的根，哪怕根上还摊着 meta.json/散帧 ——
             # 那些交给 main() 的「根上直接放着文件」去报，这里不能把它降级成一个片段。
@@ -168,6 +184,11 @@ def find_root(arg: str) -> Path:
                 return p
             if has_meta or frames:
                 return p.parent  # 片段正好叫 offline、又被直接传进来：退回上一层按片段查
+            return p
+        # 自定义名的离线根：子目录里有片段 → 它就是根（不再要求目录名叫 offline）。
+        # 项目根（有 src/public/timing.json 那些）除外，否则 `check_offline.py .` 会停在项目根上
+        # 把 src/、out/ 当片段查 —— 那正是当初「名字叫 offline 就当根」踩过的坑。
+        if seg_like and not is_project:
             return p
         if has_meta or frames:
             return p.parent  # 长得像片段：退回上一层，让调用方按片段查
@@ -259,7 +280,8 @@ def check_segment(d: Path, args, errors: list[str], warns: list[str], notes: lis
             nums[int(m.group(1))] = p
         else:
             odd.append(p.name)
-    if odd:
+    if odd and nums:
+        # 混着放：有对的有不对的，先提醒；真判定交给下面的帧号/尺寸检查
         more = f" 等 {len(odd)} 个" if len(odd) > 3 else ""
         warns.append(f"{d.name}：文件名不是 frame_####.png，Remotion 按格式拼路径读不到：{'、'.join(sorted(odd)[:3])}{more}")
     stray = [p.name for p in d.iterdir() if p.is_file() and p.suffix.lower() != ".png" and p.name != "meta.json"]
@@ -274,7 +296,18 @@ def check_segment(d: Path, args, errors: list[str], warns: list[str], notes: lis
         notes.append(f"{d.name}：目录里还有子目录：{'、'.join(subdirs[:3])}{more} —— 闸门只看本层的 frame_####.png，套在子目录里的帧查不到")
     row["frames"] = len(nums)
     if not nums:
-        errors.append(f"{d.name}：目录里一帧 frame_####.png 都没有（render-offline 没跑完？）")
+        # 有 PNG 却一张都不叫 frame_####.png：以前这里只报「一帧都没有」，把「名字不对」说成
+        # 「没渲出来」，人照着提示去重跑渲染器，重跑一百次也还是这堆文件名（R-a）。
+        # 帧名不对是硬错：Remotion 按 frame_%04d.png 拼路径，一张都读不到，等于这段没素材。
+        if odd:
+            shown = "、".join(sorted(odd)[:5])
+            tail = f" 等 {len(odd)} 个" if len(odd) > 5 else ""
+            errors.append(
+                f"{d.name}：{len(odd)} 张 PNG 一张都不叫 frame_####.png：{shown}{tail}"
+                f" —— 帧必须命名成 frame_0000.png（render-offline 出的就是这个格式，手拼请重命名）"
+            )
+        else:
+            errors.append(f"{d.name}：目录里一帧 frame_####.png 都没有（render-offline 没跑完？）")
         row["verdict"] = "失败"
         return row
 
