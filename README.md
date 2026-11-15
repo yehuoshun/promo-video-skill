@@ -40,7 +40,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   check_timing.py       分镜结构、时长底线、版式重复、layout 是否真注册过、时间轴连续性
   check_assets.py       素材宽度、比例、重名、中文文件名、疑似小图放大
   check_stills.py       静帧体检：相邻截图差值，抓「时间轴在走、画面不动」
-  check_motion.py       段尾体检：相邻帧平均像素差，尾段/运动段中位数比 < 0.3 判 ERROR（审图旁路工具，不进 verify：`check_motion.cmd <帧目录> --segments "A=540-629,B=630-719" --region x0,y0,x1,y1`）
+  check_motion.py       段尾体检：相邻帧平均像素差，尾段/运动段中位数比 < 0.3 判 ERROR（审图旁路工具，不进 verify：`check_motion.cmd <帧目录> --segments "A=540-629,B=630-719" --region x0,y0,x1,y1`；只声明部分段加 `--allow-partial`，漏掉的帧、段内缺帧、段边界给错、目录混了带编号的非主序列图、「比值算不出且尾段 <0.05」都判 ERROR；exit 2 = 参数或环境错）
   stills.ps1/.cmd       批量截帧：读 timing.json，每个场景 35% / 85% 处 + 首尾帧 → out/stills/（check_stills 的输入）
   check_video.py        成片体检：分辨率、时长、码率（不依赖 ffmpeg）
   check_audio.py        混音体检：人声 vs 音乐电平差、响度、短静音
