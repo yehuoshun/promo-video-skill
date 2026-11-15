@@ -1,0 +1,16 @@
+{
+  "fps": 60,
+  "width": 1920,
+  "height": 1080,
+  "duration": 52.8,
+  "title": "promo-video-skill · 施工图",
+  "facts": { "gates": 11 },
+  "pace": {
+    "minShot": 0.9,
+    "holdShot": 1.4,
+    "cardHold": 1.6,
+    "ctaHold": 4.0,
+    "stagger": 0.12,
+    "transition": 0.4
+  },
+  "beats": { "bpm": 100, "offset": 0 },

@@ -1,0 +1,6 @@
+node_modules/
+out/
+*.mp4
+public/offline/**/*.png
+*.png.tmp
+.DS_Store

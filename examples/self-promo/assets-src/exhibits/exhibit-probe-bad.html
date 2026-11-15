@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>probe 在真浏览器里量出来的</title>
+<style>
+  html, body { margin:0; padding:0; background:#fbf9f2; }
+  body { width:2400px; height:1350px; position:relative; overflow:hidden;
+          font-family: Consolas, "Cascadia Mono", "Microsoft YaHei", monospace; color:#1b2430; }
+  .sheet { position:absolute; inset:26px; border:3px solid #1b2430; box-sizing:border-box; }
+  .hd { position:absolute; left:64px; right:64px; top:44px; display:flex; justify-content:space-between;
+         align-items:baseline; font-size:26px; letter-spacing:.14em; color:#143b6b;
+         border-bottom:2px solid #1b2430; padding-bottom:14px; }
+  .hd b { font-size:30px; letter-spacing:.06em; }
+  .src { color:#6b7280; font-size:22px; letter-spacing:.02em; }
+  .body { position:absolute; left:64px; right:64px; top:0; }
+  .ln { position:absolute; left:0; right:0; white-space:pre; }
+  .plain { color:#1b2430; }
+  .ok { color:#143b6b; }
+  .warn { color:#8a5a00; }
+  .err { color:#c1272d; font-weight:bold; }
+  .mono { color:#6b7280; }
+  .ft { position:absolute; left:64px; right:64px; bottom:30px; display:flex; justify-content:space-between;
+        font-size:22px; color:#6b7280; letter-spacing:.06em; }
+</style></head>
+<body><div class="sheet">
+  <div class="hd"><span><b>打印件 E-02</b>　probe 在真浏览器里量出来的</span><span class="src">证据来源：probe.cmd examples/bad.html（真跑）</span></div>
+  <div class="body">
+    <div class="ln plain" style="top:160px;font-size:25px;line-height:68px">探针：bad.html  1920×1080  用时 761 ms</div>
+    <div class="ln warn" style="top:228px;font-size:25px;line-height:68px">[WARN] 2 条</div>
+    <div class="ln plain" style="top:296px;font-size:25px;line-height:68px">      - 出画：div.bleed  超出画布 90px</div>
+    <div class="ln plain" style="top:364px;font-size:25px;line-height:68px">      - 字体全缺：字体栈「"PingFang SC", "Noto Sans SC", sans-serif」里的 PingFang SC、Noto Sans SC 本机都没有，浏览器用的是默认字体（渲染出的字形不是你设计的那套）</div>
+    <div class="ln err" style="top:432px;font-size:25px;line-height:68px">[ERROR] 2 条</div>
+    <div class="ln plain" style="top:500px;font-size:25px;line-height:68px">      - 图片变形：div.stage &gt; img.stretched  渲染 404x404，原图 400x100（差 75%）</div>
+    <div class="ln plain" style="top:568px;font-size:25px;line-height:68px">      - 文字被裁：div.stage &gt; div.clipped  纵向超出 132px  内容「这一段文字比容器高三倍，超出部分被 overfl」</div>
+    <div class="ln err" style="top:636px;font-size:25px;line-height:68px">结果：2 ERROR / 2 WARN</div>
+  </div>
+  <div class="ft"><span>promo-video-skill / 施工图</span><span>文字未改动，仅重新排版</span></div>
+</div></body></html>

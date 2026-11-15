@@ -1,0 +1,265 @@
+{
+  "fps": 60,
+  "width": 1920,
+  "height": 1080,
+  "duration": 52.8,
+  "title": "promo-video-skill · 施工图",
+  "facts": {
+    "gates": 11
+  },
+  "pace": {
+    "minShot": 0.9,
+    "holdShot": 1.4,
+    "cardHold": 1.6,
+    "ctaHold": 4.0,
+    "stagger": 0.12,
+    "transition": 0.4
+  },
+  "beats": {
+    "bpm": 100,
+    "offset": 0
+  },
+  "audio": {
+    "bgm": "bgm.wav",
+    "volume": 0.55,
+    "fadeIn": 0.5,
+    "fadeOut": 1.4,
+    "sfx": [
+      {
+        "at": 1.2,
+        "file": "sfx/stamp.wav",
+        "volume": 0.35
+      },
+      {
+        "at": 7.2,
+        "file": "sfx/whoosh.wav",
+        "volume": 0.5
+      },
+      {
+        "at": 19.2,
+        "file": "sfx/whoosh.wav",
+        "volume": 0.5
+      },
+      {
+        "at": 31.2,
+        "file": "sfx/whoosh.wav",
+        "volume": 0.5
+      },
+      {
+        "at": 43.2,
+        "file": "sfx/whoosh.wav",
+        "volume": 0.5
+      },
+      {
+        "at": 44.4,
+        "file": "sfx/stamp.wav",
+        "volume": 0.45
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "id": "hook-01",
+      "kind": "hook",
+      "layout": "hook-board",
+      "start": 0,
+      "end": 7.2,
+      "beats": [
+        0.6,
+        1.2,
+        1.8,
+        2.4,
+        3.6,
+        4.8,
+        6.0,
+        7.2
+      ],
+      "onscreen": {
+        "kicker": "PROMO-VIDEO-SKILL · 开源",
+        "lines": [
+          "一支 60 秒宣传片，",
+          "**不用剪辑软件**"
+        ],
+        "sub": "写清需求，剩下的它自己画图、自己出片、自己挑错",
+        "tail": "图号 P-001 · 依据 AGENTS.md",
+        "stamp": "不合格"
+      },
+      "notes": "开场不解释是什么，先给结果：不开剪辑软件也能出片。蓝图感靠网格和尺寸标注，不靠花字。"
+    },
+    {
+      "id": "gates-01",
+      "kind": "showcase",
+      "layout": "gates-board",
+      "start": 7.2,
+      "end": 19.2,
+      "beats": [
+        7.8,
+        8.4,
+        9.0,
+        10.2,
+        11.4,
+        12.6,
+        13.8,
+        15.0,
+        16.2,
+        17.4,
+        18.6,
+        19.2
+      ],
+      "onscreen": {
+        "overline": "它第一件会做的事",
+        "title": "说 **「不行」**",
+        "lines": [
+          "@gates 道闸门，一条命令跑完",
+          "有 ERROR 就 exit 1，没有「看着差不多」"
+        ],
+        "caption": "probe 真跑出来的：图片被拉成 404×404，原图 400×100",
+        "stats": [
+          {
+            "label": "闸门",
+            "value": "@gates",
+            "unit": "道",
+            "hint": "verify.cmd"
+          },
+          {
+            "label": "偏差",
+            "value": 75,
+            "unit": "%",
+            "hint": "图片变形"
+          },
+          {
+            "label": "退出码",
+            "value": 1,
+            "hint": "有 ERROR 就停"
+          }
+        ],
+        "tail": "真跑出来的：2 ERROR / 2 WARN / exit 1"
+      },
+      "notes": "这一段的论点：规矩不是写在文档里，是写成会失败的命令。数字全是 probe.cmd 对 examples/bad.html 的真实输出。"
+    },
+    {
+      "id": "timeline-01",
+      "kind": "info",
+      "layout": "timeline-board",
+      "start": 19.2,
+      "end": 31.2,
+      "beats": [
+        19.8,
+        20.4,
+        21.6,
+        22.8,
+        24.0,
+        25.2,
+        26.4,
+        27.6,
+        28.8,
+        30.0,
+        31.2
+      ],
+      "onscreen": {
+        "overline": "第二件：时间只认一个文件",
+        "title": "改一行，**三轨一起走**",
+        "lines": [
+          "画面、字幕、声音都从 timing.json 读",
+          "字幕改了没重新合成，sha1 对不上就报错"
+        ],
+        "stats": [
+          {
+            "label": "帧",
+            "value": "@frames",
+            "hint": "@fps fps 全程"
+          },
+          {
+            "label": "场景",
+            "value": "@scenes",
+            "hint": "每个一个组件"
+          },
+          {
+            "label": "手写秒数",
+            "value": 0,
+            "hint": "组件里不许写死"
+          }
+        ],
+        "tail": "错位不靠肉眼找，靠时长差和指纹"
+      },
+      "notes": "讲机制：不是提醒人别写死数字，是让写死的数字跑不起来。"
+    },
+    {
+      "id": "sound-01",
+      "kind": "info",
+      "layout": "sound-board",
+      "start": 31.2,
+      "end": 43.2,
+      "beats": [
+        31.8,
+        32.4,
+        33.6,
+        34.8,
+        36.0,
+        37.2,
+        38.4,
+        39.6,
+        40.8,
+        42.0,
+        43.2
+      ],
+      "onscreen": {
+        "overline": "第三件：声音也不用买",
+        "title": "配乐是**算出来的**",
+        "lines": [
+          "按 BPM 合成，拍点落在画面切点上",
+          "旁白离线合成，人声比音乐高 9.3 dB"
+        ],
+        "caption": "自己的 bgm.wav：拍点红线就是画面切点",
+        "stats": [
+          {
+            "label": "BPM",
+            "value": 100
+          },
+          {
+            "label": "相位差",
+            "value": 10,
+            "unit": "ms",
+            "hint": "实测"
+          },
+          {
+            "label": "素材费",
+            "value": 0,
+            "unit": "元"
+          }
+        ],
+        "tail": "不买曲库 · 不接第三方接口 · 零版权风险"
+      },
+      "notes": "唯一一个「花钱」的环节也被拿掉了：合成音乐 + 离线 TTS，成本 0。"
+    },
+    {
+      "id": "cta-01",
+      "kind": "cta",
+      "layout": "cta-board",
+      "start": 43.2,
+      "end": 52.8,
+      "beats": [
+        43.8,
+        44.4,
+        45.6,
+        46.8,
+        48.0,
+        49.2,
+        50.4,
+        51.6,
+        52.8
+      ],
+      "onscreen": {
+        "kicker": "仓库已经公开",
+        "title": "github.com/yehuoshun/**promo-video-skill**",
+        "lines": [
+          "clone 下来先跑 doctor.cmd",
+          "缺什么它会自己说"
+        ],
+        "tail": "MIT · 十一道闸门全绿才交付",
+        "stamp": "全绿"
+      },
+      "notes": "落点只有一件事：地址 + 第一条命令。不要在片尾塞四个入口。"
+    }
+  ]
+}

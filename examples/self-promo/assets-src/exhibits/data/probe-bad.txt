@@ -1,0 +1,11 @@
+探针：bad.html  1920×1080  用时 761 ms
+
+[WARN] 2 条
+  - 出画：div.bleed  超出画布 90px
+  - 字体全缺：字体栈「"PingFang SC", "Noto Sans SC", sans-serif」里的 PingFang SC、Noto Sans SC 本机都没有，浏览器用的是默认字体（渲染出的字形不是你设计的那套）
+
+[ERROR] 2 条
+  - 图片变形：div.stage > img.stretched  渲染 404x404，原图 400x100（差 75%）
+  - 文字被裁：div.stage > div.clipped  纵向超出 132px  内容「这一段文字比容器高三倍，超出部分被 overfl」
+
+结果：2 ERROR / 2 WARN

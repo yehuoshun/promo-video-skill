@@ -1,0 +1,40 @@
+
+体检目录：E:\DevSoftWare\DeepSeekWorkSpace\code\promo-video-skill\examples\self-promo
+
+[ 1] 目录结构     OK      0.0s  timing.json、src/scenes、public
+[ 2] 环境         WARN    2.2s  体检结果：8 OK / 1 WARN / 0 FAIL
+        Chrome/Edge OK     C:\Program Files\Google\Chrome\Application\chrome.exe
+        git         OK     git version 2.49.0.windows.1
+        中文字体        OK     msyh.ttc
+        磁盘剩余        OK     91.3 GB
+        可执行的修复建议：
+          [ffmpeg] winget install Gyan.FFmpeg
+[ 3] 时间轴       FAIL    0.2s  5 个错误
+        [ERROR] 5 条
+          - [hook-01] layout='hook-board' 没在 src/Root.tsx 的 LAYOUTS 里注册，渲染出来是一块红底 Missing 屏。可用：['big-type', 'browser-frame', 'cta-full']
+          - [gates-01] layout='gates-board' 没在 src/Root.tsx 的 LAYOUTS 里注册，渲染出来是一块红底 Missing 屏。可用：['big-type', 'browser-frame', 'cta-full']
+          - [timeline-01] layout='timeline-board' 没在 src/Root.tsx 的 LAYOUTS 里注册，渲染出来是一块红底 Missing 屏。可用：['big-type', 'browser-frame', 'cta-full']
+          - [sound-01] layout='sound-board' 没在 src/Root.tsx 的 LAYOUTS 里注册，渲染出来是一块红底 Missing 屏。可用：['big-type', 'browser-frame', 'cta-full']
+          - [cta-01] layout='cta-board' 没在 src/Root.tsx 的 LAYOUTS 里注册，渲染出来是一块红底 Missing 屏。可用：['big-type', 'browser-frame', 'cta-full']
+[ 4] 素材         OK      1.3s  0 ERROR / 0 WARN
+[ 5] 离线素材     SKIP    0.0s  没有 public/offline/（没用外部渲染器）
+[ 6] 配乐         OK      1.1s  0 ERROR / 0 WARN
+[ 7] 同步         FAIL    1.2s  1 个错误
+        时间轴：52.80s   5 个场景   0 句旁白
+          [WARN] 场景切换 gates-01 @7.20s 附近没有音效（最近的音效差 infs），转场会显得平
+          [WARN] 场景切换 timeline-01 @19.20s 附近没有音效（最近的音效差 infs），转场会显得平
+          [WARN] 场景切换 sound-01 @31.20s 附近没有音效（最近的音效差 infs），转场会显得平
+          [WARN] 场景切换 cta-01 @43.20s 附近没有音效（最近的音效差 infs），转场会显得平
+          [ERROR] 结尾 CTA（cta-01 @43.20s）落地 0.4 秒内没有任何音效——全片最该有声音的地方是哑的
+[ 8] 静帧         SKIP    0.0s  没有 out/stills/（还没截帧）
+[ 9] 排版         SKIP    0.0s  没有 HTML 样帧可探（用 -Html 指定）
+[10] 成片         SKIP    0.0s  没有 out/*.mp4（还没渲染）
+
+------------------------------------------------------------------
+结果：3 通过 / 1 警告 / 2 失败 / 4 跳过（6.3 秒）
+
+失败项：
+  - 时间轴：5 个错误
+  - 同步：1 个错误
+
+修完再跑一次这条命令。

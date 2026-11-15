@@ -1,0 +1,24 @@
+self-promo/
+  assets-src/
+  public/
+  src/
+  tools/
+  .gitignore
+  package-lock.json
+  package.json
+  README.md
+  timing.json
+  tsconfig.json
+  需求确认.md
+  src/components/
+  src/effects/
+  src/lib/
+  src/scenes/
+  src/types/
+    lib/anim.ts
+    lib/onscreen.ts
+    lib/rich.tsx
+    lib/theme.ts
+    lib/timing.ts
+  public/
+    bgm.wav        4.6 MB / 52.80s / 100 BPM

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>开箱第一次跑 verify</title>
+<style>
+  html, body { margin:0; padding:0; background:#fbf9f2; }
+  body { width:2400px; height:1350px; position:relative; overflow:hidden;
+          font-family: Consolas, "Cascadia Mono", "Microsoft YaHei", monospace; color:#1b2430; }
+  .sheet { position:absolute; inset:26px; border:3px solid #1b2430; box-sizing:border-box; }
+  .hd { position:absolute; left:64px; right:64px; top:44px; display:flex; justify-content:space-between;
+         align-items:baseline; font-size:26px; letter-spacing:.14em; color:#143b6b;
+         border-bottom:2px solid #1b2430; padding-bottom:14px; }
+  .hd b { font-size:30px; letter-spacing:.06em; }
+  .src { color:#6b7280; font-size:22px; letter-spacing:.02em; }
+  .body { position:absolute; left:64px; right:64px; top:0; }
+  .ln { position:absolute; left:0; right:0; white-space:pre; }
+  .plain { color:#1b2430; }
+  .ok { color:#143b6b; }
+  .warn { color:#8a5a00; }
+  .err { color:#c1272d; font-weight:bold; }
+  .mono { color:#6b7280; }
+  .ft { position:absolute; left:64px; right:64px; bottom:30px; display:flex; justify-content:space-between;
+        font-size:22px; color:#6b7280; letter-spacing:.06em; }
+</style></head>
+<body><div class="sheet">
+  <div class="hd"><span><b>打印件 E-01</b>　开箱第一次跑 verify</span><span class="src">证据来源：verify.cmd .（真跑）</span></div>
+  <div class="body">
+    <div class="ln ok" style="top:160px;font-size:34px;line-height:55px">[目录结构] OK   0.0s  timing.json、src/scenes、public</div>
+    <div class="ln warn" style="top:215px;font-size:34px;line-height:55px">[环境]    WARN 2.2s  体检结果：8 OK / 1 WARN / 0 FAIL</div>
+    <div class="ln err" style="top:270px;font-size:34px;line-height:55px">[时间轴]  FAIL 0.2s  5 个错误</div>
+    <div class="ln ok" style="top:325px;font-size:34px;line-height:55px">[素材]    OK   1.3s  0 ERROR / 0 WARN</div>
+    <div class="ln mono" style="top:380px;font-size:34px;line-height:55px">[离线素材] SKIP 0.0s  没有 public/offline/（没用外部渲染器）</div>
+    <div class="ln ok" style="top:435px;font-size:34px;line-height:55px">[配乐]    OK   1.1s  0 ERROR / 0 WARN</div>
+    <div class="ln err" style="top:490px;font-size:34px;line-height:55px">[同步]    FAIL 1.2s  1 个错误</div>
+    <div class="ln mono" style="top:545px;font-size:34px;line-height:55px">[静帧]    SKIP 0.0s  没有 out/stills/（还没截帧）</div>
+    <div class="ln mono" style="top:600px;font-size:34px;line-height:55px">[排版]    SKIP 0.0s  没有 HTML 样帧可探（用 -Html 指定）</div>
+    <div class="ln mono" style="top:655px;font-size:34px;line-height:55px">[成片]    SKIP 0.0s  没有 out/*.mp4（还没渲染）</div>
+    <div class="ln plain" style="top:710px;font-size:34px;line-height:55px">&nbsp;</div>
+    <div class="ln plain" style="top:765px;font-size:34px;line-height:55px">结果：3 通过 / 1 警告 / 2 失败 / 4 跳过（6.3 秒）</div>
+  </div>
+  <div class="ft"><span>promo-video-skill / 施工图</span><span>文字未改动，仅重新排版</span></div>
+</div></body></html>
