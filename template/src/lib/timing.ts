@@ -37,6 +37,8 @@ export type OnscreenMap = {
   caption?: string;
   /** 最下面的尾注 */
   tail?: string;
+  /** 红章上的字，例如 不合格 */
+  stamp?: string;
   /** 数据卡片 */
   stats?: StatSlot[];
 };

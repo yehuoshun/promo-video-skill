@@ -41,7 +41,7 @@ KINDS = set(MIN_DUR)
 # 屏幕文案里的派生数字，与 template/src/lib/onscreen.ts 的 TOKENS 一一对应
 TOKENS = {"@scenes", "@duration", "@frames", "@fps", "@gates"}
 # 文案槽位，与 template/src/lib/timing.ts 的 OnscreenMap 一一对应
-SLOTS = {"kicker", "lines", "sub", "overline", "title", "url", "caption", "tail", "stats"}
+SLOTS = {"kicker", "lines", "sub", "overline", "title", "url", "caption", "tail", "stats", "stamp"}
 
 
 def onscreen_texts(on) -> list[str]:
