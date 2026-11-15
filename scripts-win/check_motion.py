@@ -214,10 +214,11 @@ def collect_frames(
     warns: list[str],
     notes: list[str],
     merge_prefixes: bool,
-) -> "list[tuple[int, Path]]":
-    """按 (命名模式, 尺寸) 分组 → 最多的那组当主序列 → 其余点名。返回主序列 [(帧号, 路径)]。
+) -> "tuple[list[tuple[int, Path]], int]":
+    """按 (命名模式, 尺寸) 分组 → 最多的那组当主序列 → 其余点名。
 
-    `merge_prefixes`（没给 --segments 时）：多前缀的静帧目录按判据 5b 合并成一批，返回全部帧。
+    返回 (帧列表, 合并了几个前缀)。第二个值是 0 = 没合并（按主序列判定）；
+    合并时（判据 5b）返回全部帧，调用方要据此判断「一对帧都没比到」这种假绿（P-1）。
     """
     groups: dict[tuple[str, tuple[int, int]], list[tuple[int | None, Path]]] = {}
     for p in sorted(root.iterdir()):
@@ -295,7 +296,7 @@ def collect_frames(
             names = ", ".join(f"{p.name}({size[0]}x{size[1]})" for _, p in files[:4])
             more = f" 等 {len(files)} 个" if len(files) > 4 else ""
             warns.append(f"忽略 {len(files)} 个不是帧的文件（{names}{more}）")
-        return frames
+        return frames, len(numbered)
 
     main_key, main_files = sorted(numbered.items(), key=rank)[0]
     frames = sorted(((n, p) for n, p in main_files), key=lambda t: (t[0], t[1].name))  # type: ignore[arg-type]
@@ -317,7 +318,7 @@ def collect_frames(
             )
         else:
             warns.append(f"忽略 {len(files)} 个不是帧的文件（{names}{more}）")
-    return frames
+    return frames, 0
 
 
 def main() -> int:
@@ -353,8 +354,8 @@ def main() -> int:
         die(f"--tail-frac 必须满足 0 < f < 1（现在 {args.tail_frac:g}）：0 会让尾段为空、1 会把运动段砍没")
     if not math.isfinite(args.fps) or args.fps <= 0:
         die(f"--fps 必须大于 0（现在 {args.fps:g}）：它只影响帧号换算成秒的打印")
-    if args.seg_frames < 0:
-        die(f"--seg-frames 不能是负数（现在 {args.seg_frames}）：不切段就别传，要切就传 ≥2 的帧数")
+    if args.seg_frames < 0 or args.seg_frames == 1:
+        die(f"--seg-frames 只能是 0（不切段）或 ≥2（现在 {args.seg_frames}）：1 帧一段根本切不出帧对")
 
     root = Path(args.root)
     if not root.is_dir():
@@ -365,7 +366,14 @@ def main() -> int:
     skips: list[str] = []
     notes: list[str] = []
 
-    frames = collect_frames(root, errors, warns, notes, merge_prefixes=not args.segments)
+    frames, merged_prefixes = collect_frames(root, errors, warns, notes, merge_prefixes=not args.segments)
+    # P-1③：--seg-frames 是按「连续序列」等分切的，静帧目录的多个前缀合并成一批后没有「段」可言。
+    # 两者同时出现时切出来的段边界全是假的，量出来的比值没法解释，直接当参数错（exit 2）。
+    if merged_prefixes and args.seg_frames > 0:
+        die(
+            f"--seg-frames {args.seg_frames} 和静帧目录互斥：这个目录有 {merged_prefixes} 个前缀、是分场景截的静帧，"
+            f"按连续序列等分切段没有意义——要么去掉 --seg-frames 按前缀合并，要么用 --segments 明确声明真的序列",
+        )
     nums = [n for n, _ in frames]
     W, H = 0, 0
     with Image.open(frames[0][1]) as im:
@@ -373,21 +381,25 @@ def main() -> int:
 
     # 帧号重复只在「同一前缀」里算：合并模式下 card0035 / intro0035 是同一时间点的两个场景，
     # 本来就该同时在（判据 5b），不算冲突；同一前缀下出现两张同号图才是排序不确定。
-    dup: list[int] = []
-    seen: set[tuple[str, int]] = set()
+    by_key: dict[tuple[str, int], list[str]] = {}
     for n, p in frames:
-        k = (name_key(p), n)
-        if k in seen:
-            dup.append(n)
-        seen.add(k)
-    if dup:
-        errors.append(f"帧号重复：{squeeze(sorted(set(dup)))}（同一前缀下同一帧号有多张图，排序结果不确定）")
-        counts: dict[tuple[str, int], int] = {}
-        for n, p in frames:
-            k = (name_key(p), n)
-            counts[k] = counts.get(k, 0) + 1
-        frames = [(n, p) for n, p in frames if counts[(name_key(p), n)] == 1]
+        by_key.setdefault((name_key(p), n), []).append(p.name)
+    clashes = sorted((n, ns) for (_k, n), ns in by_key.items() if len(ns) > 1)
+    if clashes:
+        # R-1：先点名是哪几张图，再踢掉。f0035.png 和 f035.png 名字解析成同一个帧号，
+        #      两败俱伤地剔完可能一张不剩——那种情况必须给一条清楚的 ERROR，不能掉进 nums[0] 崩栈。
+        detail = "；".join(f"帧号 {n}：{'、'.join(ns[:4])}" for n, ns in clashes[:3])
+        errors.append(
+            f"帧号重复：{squeeze(sorted({n for n, _ in clashes}))}（{detail}）——"
+            f"同一前缀下同一帧号只能有一张图，排序结果不确定；去掉重名的那张再跑",
+        )
+        frames = [(n, p) for n, p in frames if len(by_key[(name_key(p), n)]) == 1]
         nums = [n for n, _ in frames]
+        if not frames:
+            for msg in errors:
+                print(f"[ERROR] {msg}")
+            print(f"结果：{len(errors)} ERROR / 0 WARN")
+            return 1
 
     box = parse_region(args.region, W, H)
 
@@ -453,6 +465,7 @@ def main() -> int:
     diffs: list[tuple[int, int, float]] = []
     prevs: "dict[str, object]" = {}
     prev_ns: dict[str, int] = {}
+    pair_by_key: dict[str, int] = {}
     shape_bad = 0
     for n, p in frames:
         key = name_key(p)
@@ -473,10 +486,30 @@ def main() -> int:
                 shape_bad += 1
             else:
                 diffs.append((prev_ns[key], n, float(np.abs(cur - prev).mean())))  # type: ignore[operator]
+                pair_by_key[key] = pair_by_key.get(key, 0) + 1
         prevs[key] = cur
         prev_ns[key] = n
     if shape_bad:
         errors.append(f"{shape_bad} 个帧对的像素尺寸和前一帧不同，没法相减（已跳过）")
+
+    # P-1：合并模式下的假绿。判据只在「同一前缀内相邻」算帧对，每个场景只截了 1 个采样点时
+    # 一对都算不出来，整段显示「无帧对」却 0 ERROR 通过。一次比较都没做的目录不能当通过。
+    if merged_prefixes:
+        if not diffs:
+            errors.append(
+                f"这个目录一次比较都没做（{len(frames)} 张图分属 {merged_prefixes} 个前缀，每个前缀只有 1 个采样点），"
+                f"不能当通过；每场景至少截 2 个时间点，或用 --segments 声明真的序列",
+            )
+        else:
+            count_by_key: dict[str, int] = {}
+            for _n, p in frames:
+                count_by_key[name_key(p)] = count_by_key.get(name_key(p), 0) + 1
+            for key, cnt in sorted(count_by_key.items()):
+                if cnt >= 2 and pair_by_key.get(key, 0) == 0:
+                    warns.append(
+                        f"前缀 {prefix_label(key)} 有 {cnt} 张图，但一对帧都没比成（尺寸不一致或被跳过），"
+                        f"这批没参与判定",
+                    )
 
     # ---- 逐段 -----------------------------------------------------------------------
     for msg in notes:
@@ -568,32 +601,25 @@ def main() -> int:
                     f"{name}：比值算不出来（运动段 {start}-{tail_start - 1} median {ms[0]:.4f} ≈ 0），"
                     f"而且尾段 {tail_start}-{end} median {ts[0]:.4f} < {args.identical:g} —— 这不是「没有尾段」，是整段都没动",
                 )
-        elif tail and not mine:
-            # U-2：真原因是「帧号稀疏，前半个段一对帧都没有」，不是「段太短」——别让人去改段长
-            pg = max(b - a for a, b, _ in pairs)
-            skips.append(
-                f"{name}：段 {start}-{end} 的运动段 {start}-{tail_start - 1} 里没有帧对"
-                f"（帧号太稀疏，段内最大间隔 {pg} 帧），只量到尾段 {tail_start}-{end}，比值跳过",
-            )
-        elif ms and not tail:
-            pg = max(b - a for a, b, _ in pairs)
-            skips.append(
-                f"{name}：段 {start}-{end} 的尾段 {tail_start}-{end} 里没有帧对"
-                f"（帧号太稀疏，段内最大间隔 {pg} 帧），只量了运动段，比值跳过",
-            )
         elif pairs:
-            # 帧对横跨尾段边界（稀疏采样时 tail_start 常落在两帧中间）：分不进两段，
-            # 就退回整段 median——整段都没动仍然判 RED，动了就 SKIP 说明原因。
+            # P-2：比值分不出来（帧对全落在运动段或全落在尾段，或横跨边界）时，先判整段静止，
+            # 再决定 SKIP——否则 --tail-frac 0.99 这类参数会把 89 对 diff=0 压成 SKIP 假绿。
+            # U-2：说的是真原因（不是「span 太少」）：帧号稀疏 / 尾段划分把帧对全推到一边。
+            pg = max(b - a for a, b, _ in pairs)
+            if pg <= 1:
+                why = f"帧号是连续的，是尾段划分（--tail-frac {args.tail_frac:g}，尾段从 {tail_start} 起）把帧对全划到了一边"
+            else:
+                why = f"帧号太稀疏（段内最大间隔 {pg} 帧），前半个段/后半个段里一对帧都没有"
             med_all = float(np.median(np.array([d for _, _, d in pairs])))
             if med_all < args.identical:
                 errors.append(
-                    f"{name}：段 {start}-{end} 的帧对都跨在尾段边界 {tail_start} 上，分不进两段，"
+                    f"{name}：段 {start}-{end} 的比值算不出来（{why}），"
                     f"但整段 {len(pairs)} 对 median {med_all:.4f} < {args.identical:g} —— 整段都没动",
                 )
             else:
                 skips.append(
-                    f"{name}：段 {start}-{end} 的帧对都跨在尾段边界 {tail_start} 上，分不进运动段/尾段，"
-                    f"比值跳过（整段 median {med_all:.4f}）",
+                    f"{name}：段 {start}-{end} 的比值算不出来（{why}），"
+                    f"比值跳过（整段 {len(pairs)} 对 median {med_all:.4f}）",
                 )
 
         # 逐对 WARN：正常情况就几条，多了折叠，免得 90 行噪音盖住 ERROR。

@@ -12,15 +12,16 @@ rem 注意：这里不用 ( ... ) 代码块包 exit /b %ERRORLEVEL% —— 块�
 rem       会在解析时展开，exit code 永远是 0（踩过）。用 label 分开写。
 rem 注意：调 python 一定要带 call —— 若 python 被包成 .cmd 壳（conda/stub 都可能是），
 rem       不带 call 调 .cmd 会把控制权交出去、本脚本的 exit /b 拿不到真实退出码（静默 EXIT=0）。
+rem       探测行（python -c / py -3 -c）同理：不带 call 时壳一退出整个批处理就结束，三态退出码全丢。
 setlocal
 rem 先确认 python 真能跑（Windows 应用商店的 python.exe 占位 stub 会 exit 9009）
-python -c "import sys" >nul 2>nul
+call python -c "import sys" >nul 2>nul
 if errorlevel 1 goto :try_py
 call python "%~dp0check_motion.py" %*
 exit /b %ERRORLEVEL%
 
 :try_py
-py -3 -c "import sys" >nul 2>nul
+call py -3 -c "import sys" >nul 2>nul
 if errorlevel 1 goto :no_python
 call py -3 "%~dp0check_motion.py" %*
 exit /b %ERRORLEVEL%
