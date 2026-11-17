@@ -12,13 +12,14 @@
     `发布物料.md` 由它生成（给人复制粘贴）。检查器读 json，
     和 `timing.json` / 封面 PNG / 成片 mp4 对账，错一个字就 ERROR。
 
-它查五组：
+它查六组：
 
     A 结构       三个平台都在、必填字段非空、没有多余平台
     B 平台限制   标题字数、tag 数量、封面与视频的比例是否符合该平台
     C 事实一致   文案里的秒数 / 帧数 / 闸门数 / BPM 与 timing.json 对得上
     D 文件到位   视频与封面真实存在（项目根优先，其次 out/），且尺寸量得出来
     E 地址一致   文案里出现的 github 地址必须就是 publish.json 的 repo
+    F 发布回填   写了 published 就核对：链接像不像该平台、时刻是不是带时区的 ISO
 
 用法：
     python scripts-win/check_publish.py -Project examples/self-promo
@@ -47,15 +48,19 @@ SPEC = {
     "bilibili": dict(
         name="B站", title_max=80, tags=(3, 10), video_ratio=16 / 9,
         cover_ratio=(16 / 9,), hashtag=False,
+        # 发出去之后回填 published.url 时要对得上的域名（b23.tv 是短链）
+        url_domains=("bilibili.com", "b23.tv"),
     ),
     "douyin": dict(
         name="抖音", title_max=55, tags=(3, 5), video_ratio=9 / 16,
         cover_ratio=(9 / 16,), hashtag=True,
+        url_domains=("douyin.com", "iesdouyin.com"),
     ),
     "xiaohongshu": dict(
         name="小红书", title_max=20, tags=(5, 10), video_ratio=9 / 16,
         # 小红书首图常规是 3:4，竖屏 9:16 也吃
         cover_ratio=(3 / 4, 9 / 16), hashtag=True,
+        url_domains=("xiaohongshu.com", "xhslink.com"),
     ),
 }
 
@@ -64,6 +69,10 @@ TOKENS = ("@duration", "@frames", "@fps", "@gates", "@scenes", "@bpm")
 
 # 比例容差：裁切/编码会让实际尺寸差几个像素
 RATIO_TOL = 0.02
+
+# 发布时刻的形态：带时区的 ISO 8601（2026-11-17T22:25:40+08:00）。
+# 不带时区的时间戳换台机器就对不上账，所以这里要求写死偏移。
+ISO_AT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[+-]\d{2}:\d{2}|Z)$")
 
 
 class Report:
@@ -267,6 +276,30 @@ def render_md(pub: dict, proj: Path, facts: dict) -> str:
         if item.get("note"):
             out.append(f"**其他**：{fill(clean(item['note']), tok, Report(), '其他')}")
             out.append("")
+    out.append("## 已发布")
+    out.append("")
+    rows = []
+    for pid in SPEC:
+        item = (pub.get("platforms") or {}).get(pid) or {}
+        done = item.get("published")
+        if isinstance(done, dict) and done.get("url"):
+            rows.append(f"| {SPEC[pid]['name']} | {done.get('at') or '—'} | <{done['url']}> | "
+                        f"{fill(clean(str(done.get('note') or '')), tok, Report(), '备注')} |")
+    if rows:
+        out.append("| 平台 | 发布时刻（含时区） | 链接 | 备注 |")
+        out.append("|---|---|---|---|")
+        out.extend(rows)
+        out.append("")
+        out.append("> 这一节来自 `publish.json` 各平台的 `published` 字段；发出去之后回填，复盘时直接拿它对账。")
+    else:
+        out.append("还没发。发完在 `publish.json` 对应平台里补一段，再跑一次 `--write`：")
+        out.append("")
+        out.append("```json")
+        out.append('"published": { "url": "https://www.bilibili.com/video/BVxxxxxxxxxx/",')
+        out.append('               "at": "2026-11-17T22:25:40+08:00",')
+        out.append('               "note": "合集「开源分享」第 2 集" }')
+        out.append("```")
+    out.append("")
     out.append("---")
     out.append("")
     out.append("## 发布前自检（由 publish.json 与 timing.json 自动对账）")
@@ -278,6 +311,43 @@ def render_md(pub: dict, proj: Path, facts: dict) -> str:
         out.append(f"3. 地址三处统一：`{repo.replace('https://','')}`（片尾、B站简介、小红书正文同一串）。")
     out.append("")
     return "\n".join(out)
+
+
+def check_published(plat: dict, rep: Report) -> None:
+    """F 发布回填：发出去之后在平台里补 published{url, at, note}，把「发了」变成可核对的字段。
+
+    为什么要有：片子在平台上是真发出去了，还是只躺在本地 out/ 里，差别只有外部链接能证明。
+    回填之后 发布物料.md 会多一节「已发布」，复盘时能直接对上平台、链接、发布时间，
+    不用再翻聊天记录问「那天几点发的」。这一节是可选的：还没发就不写，不报错。
+    """
+    for pid, spec in SPEC.items():
+        item = plat.get(pid)
+        if not isinstance(item, dict):
+            continue
+        pub = item.get("published")
+        if pub is None:
+            continue
+        name = spec["name"]
+        if not isinstance(pub, dict):
+            rep.error(f"{name}：published 要写成对象（url / at / note 三个键）")
+            continue
+        url = str(pub.get("url") or "").strip()
+        at = str(pub.get("at") or "").strip()
+        if not url:
+            rep.error(f"{name}：published 缺 url")
+        elif not url.startswith("https://"):
+            rep.warn(f"{name}：published.url 不是 https 开头：{url}")
+        elif not any(d in url.lower() for d in spec["url_domains"]):
+            rep.error(f"{name}：published.url 不像该平台的链接（域名要含 "
+                      f"{' / '.join(spec['url_domains'])}）：{url}")
+        if not at:
+            rep.error(f"{name}：published 缺 at（发布时刻，写成 2026-11-17T22:25:40+08:00）")
+        elif not ISO_AT.match(at):
+            rep.error(f"{name}：published.at 形态不对：{at}"
+                      "（要 2026-11-17T22:25:40+08:00 这种带时区的 ISO 时刻，方便跨机器对账）")
+        note = pub.get("note")
+        if note is not None and not str(note).strip():
+            rep.warn(f"{name}：published.note 是空串，删掉这个键比留空更清楚")
 
 
 def find_file(proj: Path, name: str) -> Path | None:
@@ -371,6 +441,7 @@ def check(proj: Path, pub: dict, rep: Report) -> None:
 
     check_facts(proj, texts, rep)
     check_repo(texts, str(pub.get("repo", "")), rep)
+    check_published(plat, rep)
 
 
 def pad(text: str, width: int = 8) -> str:
