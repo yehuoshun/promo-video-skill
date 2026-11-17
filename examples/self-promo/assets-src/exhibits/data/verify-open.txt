@@ -1,5 +1,5 @@
 
-体检目录：E:\DevSoftWare\DeepSeekWorkSpace\code\promo-video-skill\examples\self-promo
+体检目录：examples\self-promo（仓库内相对路径）
 
 [ 1] 目录结构     OK      0.0s  timing.json、src/scenes、public
 [ 2] 环境         WARN    2.2s  体检结果：8 OK / 1 WARN / 0 FAIL
