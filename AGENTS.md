@@ -38,7 +38,7 @@
 | 7 | 配音与字幕（可选） | `public/vo/*.wav`、`voiceLines` | `gen_vo.py` 逐句合成后 `check_sync.py` 无 ERROR：句子不越场景、字幕不撞车；无旁白就跳过，直接进 8 |
 | 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `npm run stills` 截、`check_stills.py` 无 ERROR + 校验清单 B 层全勾（`probe.cmd` 只量 HTML，Remotion 画面没有 DOM 可量，裁字/变形这条得靠静帧肉眼） |
 | 9 | 渲染交付 | `out/final-4k.mp4` | `scripts-win\verify.cmd .` 0 失败（含 check_video 0 ERROR）+ 校验清单 C 层全勾 |
-| 10 | 发布包装 | `publish.json`、`发布物料.md`、三平台封面 | `python scripts-win\check_publish.py -Project .` 无 ERROR：三平台标题不超字数、tag 数量在区间、封面与视频比例对、文案里的数字与 `timing.json` 一致；**发出去之后**在 `publish.json` 回填 `published{url, at}`（链接、带时区时刻），并在 `docs/发布记录.md` 记一行 |
+| 10 | 发布包装 | `publish.json`、`发布物料.md`、三平台封面 | `python scripts-win\check_publish.py -Project .` 无 ERROR：三平台标题不超字数、tag 数量在区间、封面与视频比例对、文案里的数字与 `timing.json` 一致 |
 | 11 | 改版 | 新版本 | `复盘.md` 已写（`scripts-win\retro.cmd -Project .`，复盘先于改版）；改动写进 `需求确认.md` 的修改记录 |
 
 ## 四条红线
@@ -57,7 +57,7 @@
   timing.json      分镜与时间
   public/          截图、音乐、字体（原图，不压缩）
   src/scenes/      每个场景一个组件
-  publish.json     发布物料：标题/简介/tag/封面；发出去之后回填 published{url, at}
+  publish.json     发布物料：标题/简介/tag/封面
   发布物料.md      三平台文案（check_publish --write 生成，别手改）
   复盘.md          交付后复盘（retro.cmd 生成）
   out/             静帧、对比图、成片（不进 git）
