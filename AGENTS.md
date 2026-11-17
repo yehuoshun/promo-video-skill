@@ -22,7 +22,9 @@
 
 常驻只读本文件。references 一次读一份，读完再决定是否需要下一份。
 
-## 十一个阶段
+## 十二个阶段
+
+整张表是 0（准备）到 11（改版）共 12 行：0 是开工前的环境体检、1–10 是主流程、11 是交付后的下一版，所以对外常说「十一道闸门 / 十个主流程阶段」——别再把表行数说成十一个。
 
 | # | 阶段 | 产出 | 出口条件 |
 |---|---|---|---|
@@ -37,7 +39,7 @@
 | 8 | 静帧审查 | `out/stills/`、`out/sheet.jpg` | `npm run stills` 截、`check_stills.py` 无 ERROR + 校验清单 B 层全勾（`probe.cmd` 只量 HTML，Remotion 画面没有 DOM 可量，裁字/变形这条得靠静帧肉眼） |
 | 9 | 渲染交付 | `out/final-4k.mp4` | `scripts-win\verify.cmd .` 0 失败（含 check_video 0 ERROR）+ 校验清单 C 层全勾 |
 | 10 | 发布包装 | `publish.json`、`发布物料.md`、三平台封面 | `python scripts-win\check_publish.py -Project .` 无 ERROR：三平台标题不超字数、tag 数量在区间、封面与视频比例对、文案里的数字与 `timing.json` 一致 |
-| 11 | 改版 | 新版本 | 改动写进 `需求确认.md` 的修改记录 |
+| 11 | 改版 | 新版本 | `复盘.md` 已写（`scripts-win\retro.cmd -Project .`，复盘先于改版）；改动写进 `需求确认.md` 的修改记录 |
 
 ## 四条红线
 
@@ -55,6 +57,9 @@
   timing.json      分镜与时间
   public/          截图、音乐、字体（原图，不压缩）
   src/scenes/      每个场景一个组件
+  publish.json     发布物料：标题/简介/tag/封面
+  发布物料.md      三平台文案（check_publish --write 生成，别手改）
+  复盘.md          交付后复盘（retro.cmd 生成）
   out/             静帧、对比图、成片（不进 git）
 ```
 
@@ -74,8 +79,10 @@ npm run check:stills   # 相邻帧差值：< 0.05 渲了同一帧，< 0.6 那段
 npm run sheet      # 拼图  → out/sheet.jpg，一张图看完全片
 npm run studio     # 浏览器实时预览
 scripts-win\verify.cmd .   # 交付前体检：十一道闸门一次跑完，有 ERROR 就 exit 1
+#   （默认没有成片就判失败；只想看进度加 -NoVideo，-Self 自动开。每轮结果默认追加进 out/verify-log.jsonl，-NoLog 关，复盘靠它数闸门历史。编码闸门只在 -Self 时跑，项目体检实出 10 行）
 python scripts-win\check_publish.py -Project .          # 发布物料体检：标题字数、tag 数量、封面比例、文案数字对账
 python scripts-win\check_publish.py -Project . --write   # 按 publish.json 生成 发布物料.md（md 别手改）
+scripts-win\retro.cmd -Project .            # 复盘：自动填事实 + 三个问题 → 复盘.md
 ```
 
 时间只改 `timing.json`；**文案也只改它**（`scenes[].onscreen`，槽位见 `src/lib/timing.ts` 的 `OnscreenMap`）；场景在 `src/scenes/`（只管布局和动效，不写字）；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
