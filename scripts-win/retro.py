@@ -301,6 +301,29 @@ def carry_answers(path: Path) -> list[str]:
     return ans[:3]
 
 
+def published_facts(root: Path) -> list[tuple[str, str, str]]:
+    """publish.json 里回填过的发布记录：(平台, 时刻, 链接)。
+
+    发没发出去，只有外部链接能证明——本地 out/ 里有 mp4 不代表平台上有这支片子。
+    """
+    path = root / "publish.json"
+    if not path.is_file():
+        return []
+    try:
+        pub = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    names = {"bilibili": "B站", "douyin": "抖音", "xiaohongshu": "小红书"}
+    rows: list[tuple[str, str, str]] = []
+    for pid, item in (pub.get("platforms") or {}).items():
+        if not isinstance(item, dict):
+            continue
+        done = item.get("published")
+        if isinstance(done, dict) and done.get("url"):
+            rows.append((names.get(pid, pid), str(done.get("at") or "—"), str(done["url"])))
+    return rows
+
+
 def build_md(root: Path, prev_answers: list[str] | None = None) -> tuple[str, dict]:
     f = film_facts(root)
     a = asset_facts(root)
@@ -346,6 +369,12 @@ def build_md(root: Path, prev_answers: list[str] | None = None) -> tuple[str, di
         if x["dims"]:
             bits.append(f"{x['dims'][0]}×{x['dims'][1]}")
         add(f"| {x['kind']} | " + " / ".join(bits) + " |")
+    if (root / "publish.json").is_file():
+        pub = published_facts(root)
+        if pub:
+            add("| 发布 | " + "；".join(f"{n} {at} [{url}]({url})" for n, at, url in pub) + " |")
+        else:
+            add("| 发布 | 还没回填——发出去之后在 `publish.json` 补 `published`，再跑一次本命令 |")
     add("")
 
     # 红线对账：四条红线里能数出来的部分，别让人靠记忆判断
