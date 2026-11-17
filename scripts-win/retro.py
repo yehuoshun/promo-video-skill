@@ -16,19 +16,23 @@
 用法：
     scripts-win\\retro.cmd -Project .              # 在片子工程里跑，写 ./复盘.md
     scripts-win\\retro.cmd -Project ..\\my-video    # 指定工程
+    scripts-win\\retro.cmd -Project . -Yuque        # 顺手同步到语雀「自媒体相关库」
     python scripts-win\\retro.py -Project . --no-ledger   # 只生成文档、不动账本
     python scripts-win\\retro.py -Project . --stdout      # 打到控制台不落盘
 
-退出码：0 正常；2 找不到 timing.json 或参数不对。
+退出码：0 正常；2 找不到 timing.json 或参数不对（语雀同步失败只是 WARN，不影响退出码）。
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -47,6 +51,13 @@ IMG_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 JUNK_MP4 = re.compile(r"^(effects|lab-|det-|repro)|-check")
 # 提交信息里自陈的返工标记（「补 check_motion 的六类漏判」「修假绿」这类）
 REWORK_WORDS = ("修", "补", "漏判", "假绿", "放绿", "误判", "必红", "假红")
+
+# 语雀：账本默认落在「自媒体相关库」（https://www.yuque.com/yehuoshun/wy85px）。
+# token 只从本机读（环境变量 / 工作区 config / 用户目录），仓库里不放任何凭据。
+YUQUE_API = "https://www.yuque.com/api/v2"
+YUQUE_REPO = os.environ.get("YUQUE_REPO", "yehuoshun/wy85px")
+YUQUE_LEDGER_SLUG = "promo-retro-ledger"
+YUQUE_LEDGER_TITLE = "宣传片复盘账本"
 
 
 def human_size(n: float) -> str:
@@ -407,6 +418,26 @@ def build_md(root: Path, prev_answers: list[str] | None = None) -> tuple[str, di
     return "\n".join(L) + "\n", facts
 
 
+def ledger_line(facts: dict) -> str:
+    """账本的一行：同日同项目重复写没有意义，本地和语雀都用这同一行。"""
+    day = datetime.now().strftime("%Y-%m-%d")
+    proj = facts["project"]
+    head = f"- **{day}** `{proj}`"
+    f = facts.get("first") or {}
+    bits = []
+    if facts.get("duration"):
+        bits.append(f"{facts['duration']:.1f}s")
+    bits.append(f"verify {facts['runs']} 轮")
+    if facts["runs"]:
+        bits.append(f"首轮 {f.get('pass', '?')}通过/{f.get('warn', '?')}警告/"
+                    f"{f.get('fail', '?')}失败/{f.get('skip', '?')}跳过")
+    if facts["red"]:
+        bits.append("红过：" + "、".join(facts["red"]))
+    if facts["never"]:
+        bits.append("从没真跑过：" + "、".join(facts["never"]))
+    return f"{head}：{' · '.join(bits)}　→ 根因：待填；已加的闸门：待填"
+
+
 def append_ledger(facts: dict) -> str:
     ledger = TOOL_REPO / "docs" / "错误清单.md"
     day = datetime.now().strftime("%Y-%m-%d")
@@ -424,31 +455,178 @@ def append_ledger(facts: dict) -> str:
         # newline="\n"：文本模式默认会把 \n 换成本机 os.linesep，账本进 git 后满屏 CRLF 噪音
         with ledger.open("w", encoding="utf-8", newline="\n") as fh:
             fh.write(header)
-    f = facts["first"] or {}
-    bits = []
-    if facts.get("duration"):
-        bits.append(f"{facts['duration']:.1f}s")
-    bits.append(f"verify {facts['runs']} 轮")
-    if facts["runs"]:
-        bits.append(f"首轮 {f.get('pass', '?')}通过/{f.get('warn', '?')}警告/"
-                    f"{f.get('fail', '?')}失败/{f.get('skip', '?')}跳过")
-    if facts["red"]:
-        bits.append("红过：" + "、".join(facts["red"]))
-    if facts["never"]:
-        bits.append("从没真跑过：" + "、".join(facts["never"]))
-    line = f"{head}：{' · '.join(bits)}　→ 根因：待填；已加的闸门：待填\n"
     with ledger.open("a", encoding="utf-8", newline="\n") as fh:
-        fh.write(line)
+        fh.write(ledger_line(facts) + "\n")
     return f"账本追加一行：{ledger}"
 
 
+# ---------------------------------------------------------------- 语雀同步（可选）
+
+
+class YuqueError(RuntimeError):
+    pass
+
+
+def find_yuque_token(explicit: str | None = None) -> str | None:
+    """token 的找法：--yuque-token-file → 环境变量 → 工作区 config → 用户目录。
+
+    只读取、不回显；找不到就返回 None，由调用方决定是报错还是跳过。
+    """
+    cands: list[Path] = []
+    if explicit:
+        # 明说了用哪个文件就别再猜：找不到要当场报错，否则会悄悄用别的凭据
+        p = Path(explicit).expanduser()
+        if not p.is_file():
+            raise YuqueError(f"--yuque-token-file 指向的文件不存在：{p}")
+        tok = p.read_text(encoding="utf-8", errors="replace").strip()
+        if not tok:
+            raise YuqueError(f"--yuque-token-file 指向的文件是空的：{p}")
+        return tok
+    if os.environ.get("YUQUE_TOKEN"):
+        return os.environ["YUQUE_TOKEN"].strip()
+    # TOOL_REPO 是 .../DeepSeekWorkSpace/code/promo-video-skill，配置在工作区根 config/
+    cands.append(TOOL_REPO.parent.parent / "config" / "yuque_token.txt")
+    cands.append(Path.home() / ".yuque" / "token.txt")
+    for p in cands:
+        try:
+            if p.is_file():
+                tok = p.read_text(encoding="utf-8", errors="replace").strip()
+                if tok:
+                    return tok
+        except OSError:
+            continue
+    return None
+
+
+def _yuque(token: str, method: str, path: str, payload: dict | None = None,
+           retries: int = 2) -> dict:
+    url = YUQUE_API + path
+    body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    last = ""
+    for attempt in range(retries + 1):
+        req = urllib.request.Request(url, data=body, method=method)
+        req.add_header("X-Auth-Token", token)
+        req.add_header("Content-Type", "application/json; charset=utf-8")
+        req.add_header("User-Agent", "promo-video-skill/retro")
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return json.loads(r.read().decode("utf-8") or "{}")
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "replace")[:200]
+            if e.code == 404:
+                raise YuqueError(f"404 {path}") from e
+            last = f"HTTP {e.code} {path}：{detail}"
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            last = f"{path} 连不上：{e}"
+        if attempt < retries:
+            continue
+    raise YuqueError(last)
+
+
+def _yuque_get_doc(token: str, slug: str) -> dict | None:
+    try:
+        return _yuque(token, "GET", f"/repos/{YUQUE_REPO}/docs/{slug}").get("data")
+    except YuqueError as e:
+        if str(e).startswith("404"):
+            return None
+        raise
+
+
+def _yuque_check(facts: dict, title: str, sent: dict) -> None:
+    """正文必须真进去：语雀曾静默把 markdown 落成占位，word_count 是唯一当场证据。"""
+    wc = (sent.get("data") or {}).get("word_count") or 0
+    if wc <= 0:
+        raise YuqueError(f"《{title}》发出去了但 word_count={wc}，正文可能没进去")
+
+
+def _yuque_toc_append(token: str, doc_id: int) -> str:
+    """把文档挂到内容库目录里；挂不上只影响它在网页上好不好找，不影响内容。"""
+    try:
+        _yuque(token, "PUT", f"/repos/{YUQUE_REPO}/toc",
+               {"action": "appendNode", "action_mode": "child",
+                "type": "DOC", "doc_ids": [doc_id]})
+        return ""
+    except YuqueError as e:
+        return f"（目录未挂上：{e}）"
+
+
+def sync_yuque(facts: dict, md: str, with_ledger: bool = True) -> list[str]:
+    """把复盘文档 upsert 到知识库，并往账本文档追加一行。返回给人看的几行结果。"""
+    token = find_yuque_token(facts.get("token_file"))
+    if not token:
+        raise YuqueError("没找到语雀 token：--yuque-token-file、YUQUE_TOKEN、"
+                         "工作区 config/yuque_token.txt 都没有")
+    msgs: list[str] = []
+    proj = facts["project"]
+    day = datetime.now().strftime("%Y-%m-%d")
+    title = f"{proj} · 复盘 {day}"
+    slug = "promo-retro-" + (re.sub(r"[^a-z0-9]+", "-", proj.lower()).strip("-") or "project")
+
+    url = f"https://www.yuque.com/{YUQUE_REPO}/{slug}"
+    existed = _yuque_get_doc(token, slug)
+    if existed:
+        doc = _yuque(token, "PUT", f"/repos/{YUQUE_REPO}/docs/{existed['id']}",
+                     {"title": title, "format": "markdown", "body": md})
+        msgs.append(f"语雀更新：《{title}》 {url}")
+    else:
+        doc = _yuque(token, "POST", f"/repos/{YUQUE_REPO}/docs",
+                     {"title": title, "slug": slug, "public": 0,
+                      "format": "markdown", "body": md})
+        doc_id = (doc.get("data") or {}).get("id")
+        msgs.append(f"语雀新建：《{title}》 {url}")
+        if doc_id:
+            tip = _yuque_toc_append(token, doc_id)
+            if tip:
+                msgs.append("  " + tip)
+    _yuque_check(facts, title, doc)
+
+    line = ledger_line(facts)
+    if not with_ledger:
+        return msgs
+    led = _yuque_get_doc(token, YUQUE_LEDGER_SLUG)
+    if led and line in (led.get("body") or ""):
+        msgs.append("语雀账本已有这条，跳过")
+        return msgs
+    if led:
+        # 空一行再起列表：紧贴上一行段落的 `- ` 不会被渲染成列表
+        body = (led.get("body") or "").rstrip() + "\n\n" + line + "\n"
+        put = _yuque(token, "PUT", f"/repos/{YUQUE_REPO}/docs/{led['id']}",
+                     {"title": led.get("title") or YUQUE_LEDGER_TITLE,
+                      "format": "markdown", "body": body})
+        _yuque_check(facts, YUQUE_LEDGER_TITLE, put)
+        msgs.append(f"语雀账本追加一行：{YUQUE_REPO}")
+    else:
+        head = (f"# {YUQUE_LEDGER_TITLE}\n\n"
+                "每次交付后由 `scripts-win\\retro.cmd -Project . -Yuque` 追加一行；"
+                "只增不改。\n\n")
+        created = _yuque(token, "POST", f"/repos/{YUQUE_REPO}/docs",
+                         {"title": YUQUE_LEDGER_TITLE, "slug": YUQUE_LEDGER_SLUG,
+                          "public": 0, "format": "markdown", "body": head + line + "\n"})
+        _yuque_check(facts, YUQUE_LEDGER_TITLE, created)
+        msgs.append(f"语雀建账本并写首行：{YUQUE_REPO}")
+        led_id = (created.get("data") or {}).get("id")
+        if led_id:
+            tip = _yuque_toc_append(token, led_id)
+            if tip:
+                msgs.append("  " + tip)
+    return msgs
+
+
 def main() -> int:
+    global YUQUE_REPO
     ap = argparse.ArgumentParser(description="交付后复盘：自动填事实，人只答三个问题")
     ap.add_argument("-Project", "--project", default=".", help="片子工程目录（默认当前目录）")
     ap.add_argument("--out", default="复盘.md", help="输出文件名（默认 复盘.md，写进工程根）")
     ap.add_argument("--no-ledger", action="store_true", help="不往 docs/错误清单.md 追加")
     ap.add_argument("--stdout", action="store_true", help="只打到控制台，不落盘")
+    ap.add_argument("-Yuque", "--yuque", action="store_true",
+                    help=f"顺手把复盘同步到语雀知识库（默认 {YUQUE_REPO}）")
+    ap.add_argument("--yuque-repo", default=None, help="语雀知识库 namespace（默认 自媒体相关库）")
+    ap.add_argument("--yuque-token-file", default=None, help="语雀 token 文件路径（默认自动找）")
     args = ap.parse_args()
+
+    if args.yuque_repo:
+        YUQUE_REPO = args.yuque_repo
 
     root = Path(args.project).resolve()
     if not root.is_dir():
@@ -473,6 +651,14 @@ def main() -> int:
     print(f"  verify 历史 {facts['runs']} 轮" + (f"，从没真跑过：{'、'.join(facts['never'])}" if facts["never"] else ""))
     if not args.no_ledger:
         print("  " + append_ledger(facts))
+    if args.yuque:
+        facts["token_file"] = args.yuque_token_file
+        try:
+            for m in sync_yuque(facts, md, with_ledger=not args.no_ledger):
+                print("  " + m)
+        except YuqueError as e:
+            print(f"  [WARN] 语雀同步失败：{e}")
+            print("         （本地 复盘.md 已写好，不影响本次交付）")
     if facts["answered"]:
         print(f"  三个问题已回答 {facts['answered']}/3（重跑会保留，只刷新事实区）。")
     else:
