@@ -70,7 +70,7 @@ TOKENS = ("@duration", "@frames", "@fps", "@gates", "@scenes", "@bpm")
 # 比例容差：裁切/编码会让实际尺寸差几个像素
 RATIO_TOL = 0.02
 
-# 发布时刻的形态：带时区的 ISO 8601（2026-11-17T22:25:40+08:00）。
+# 发布时刻的形态：带时区的 ISO 8601（2026-01-01T12:00:00+08:00）。
 # 不带时区的时间戳换台机器就对不上账，所以这里要求写死偏移。
 ISO_AT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[+-]\d{2}:\d{2}|Z)$")
 
@@ -296,7 +296,7 @@ def render_md(pub: dict, proj: Path, facts: dict) -> str:
         out.append("")
         out.append("```json")
         out.append('"published": { "url": "https://www.bilibili.com/video/BVxxxxxxxxxx/",')
-        out.append('               "at": "2026-11-17T22:25:40+08:00",')
+        out.append('               "at": "2026-01-01T12:00:00+08:00",')
         out.append('               "note": "合集「开源分享」第 2 集" }')
         out.append("```")
     out.append("")
@@ -341,10 +341,10 @@ def check_published(plat: dict, rep: Report) -> None:
             rep.error(f"{name}：published.url 不像该平台的链接（域名要含 "
                       f"{' / '.join(spec['url_domains'])}）：{url}")
         if not at:
-            rep.error(f"{name}：published 缺 at（发布时刻，写成 2026-11-17T22:25:40+08:00）")
+            rep.error(f"{name}：published 缺 at（发布时刻，写成 2026-01-01T12:00:00+08:00）")
         elif not ISO_AT.match(at):
             rep.error(f"{name}：published.at 形态不对：{at}"
-                      "（要 2026-11-17T22:25:40+08:00 这种带时区的 ISO 时刻，方便跨机器对账）")
+                      "（要 2026-01-01T12:00:00+08:00 这种带时区的 ISO 时刻，方便跨机器对账）")
         note = pub.get("note")
         if note is not None and not str(note).strip():
             rep.warn(f"{name}：published.note 是空串，删掉这个键比留空更清楚")
