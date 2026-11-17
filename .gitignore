@@ -19,6 +19,11 @@ Thumbs.db
 .env.*
 !.env.example
 
+# 个人数据：发布链接、账号、播放数、发布时间——只留本机，永远不进公开仓库
+# （2026-11-17 踩过：把发布记录 commit 上去，公开仓库匿名就能读到，撤回还留下历史）
+*.local.md
+*.local.json
+
 # Python
 __pycache__/
 *.pyc
