@@ -12,6 +12,7 @@
 #   scripts-win\verify.cmd . -Html 样帧.html       # 指定要探针的样帧
 #   scripts-win\verify.cmd . -Html a.html,b.html  # 多个用逗号隔开（也吃通配符 a\*.html）
 #   scripts-win\verify.cmd -Self                  # 体检工具本身（加编码检查 + examples/ 里的样帧）
+#   scripts-win\verify.cmd . -NoVideo             # 还没渲：没有成片只记 SKIP（默认判失败，这是交付体检不是进度体检）
 #
 # 参数：
 #   -Project        项目目录（位置 0，默认 .）
@@ -22,8 +23,10 @@
 #   -AllowShort     不检查总时长是否在 45~60 秒
 #   -Strict         探针把「带文字元素出画」也当 ERROR
 #   -SkipEnv        跳过环境体检
-#   -Self           体检工具仓库本身（多查编码规整、examples/ 下所有样帧）
+#   -Self           体检工具仓库本身（多查编码规整、examples/ 下所有样帧；没有成片不算失败）
 #   -Quiet          只打结论，不打中间输出
+#   -NoVideo        没有成片时不判失败（只想看进度用；-Self 自动算作开启）
+#   -NoLog          不写 out\verify-log.jsonl（默认写：复盘靠它数「跑了几轮、哪道从没真跑过」）
 
 param(
     [Parameter(Position = 0)][string]$Project = ".",
@@ -36,6 +39,8 @@ param(
     [switch]$SkipEnv,
     [switch]$Self,
     [switch]$Quiet,
+    [switch]$NoVideo,
+    [switch]$NoLog,
     [string]$Chrome = ''
 )
 
@@ -345,10 +350,11 @@ if (-not (Test-Path -LiteralPath $offlineDir)) {
 # 成片里到底有没有声音，是第 9 步 check_video.py 的事（它读 MP4 的 soun 轨）。
 $bgmPath = $null
 $bgmName = 'bgm.wav'
+$bgmDeclared = ''      # timing.json 里明写的值；空 = 没声明，只有这种情况下才允许 glob 回退 / SKIP
 if (Test-Path -LiteralPath $timingPath) {
     try {
         $tj = Get-Content -LiteralPath $timingPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($tj.audio -and $tj.audio.bgm) { $bgmName = [string]$tj.audio.bgm }
+        if ($tj.audio -and $tj.audio.bgm) { $bgmName = [string]$tj.audio.bgm; $bgmDeclared = $bgmName }
     } catch { }
 }
 if (Test-Path -LiteralPath $publicDir) {
@@ -362,7 +368,11 @@ if (Test-Path -LiteralPath $publicDir) {
     }
 }
 
-if (-not $bgmPath) {
+if (-not $bgmPath -and $bgmDeclared) {
+    # 声明即契约：timing.json 说有配乐，文件却不在 —— 以前这里一路退到 SKIP，
+    # 而成片那道「该有声就得有音轨」读的是同一个字段，于是两边一起静默放绿。
+    Report '配乐' 'ERROR' 0 ("timing.json 声明了 audio.bgm=" + $bgmDeclared + "，但 public\ 下没有这个文件")
+} elseif (-not $bgmPath) {
     Report '配乐' 'SKIP' 0 '没有背景音乐（public/bgm.*）'
 } elseif ($bgmPath -notmatch '\.wav$') {
     # check_audio.py 只读 WAV（mp3/m4a 要 ffmpeg 才能解），不装 ffmpeg 就只做存在性提示
@@ -511,7 +521,14 @@ if (-not $mp4 -and (Test-Path -LiteralPath $outDir)) {
 }
 
 if (-not $mp4) {
-    if ($mp4Why) { Report '成片' 'SKIP' 0 $mp4Why } else { Report '成片' 'SKIP' 0 '没有 out/*.mp4（还没渲染）' }
+    # 交付体检对「还没渲」和「做完了」不能给同一个退出码：以前这里无条件 SKIP，
+    # 一个只有 timing.json、什么素材什么成片都没有的空壳工程能拿到 exit 0。
+    $why = if ($mp4Why) { $mp4Why } else { '没有 out/*.mp4（还没渲染）' }
+    if ($NoVideo -or $Self) {
+        Report '成片' 'SKIP' 0 $why
+    } else {
+        Report '成片' 'ERROR' 0 ($why + '（交付体检要求有片；只想看进度加 -NoVideo）')
+    }
 } else {
     $argList = @((Join-Path $here 'check_video.py'), $mp4)
     if (Test-Path -LiteralPath $timingPath) { $argList += @('--timing', $timingPath) }
@@ -542,6 +559,37 @@ $pass = @($results | Where-Object { $_.Status -eq 'PASS' }).Count
 $warn = @($results | Where-Object { $_.Status -eq 'WARN' }).Count
 $fail = @($results | Where-Object { $_.Status -eq 'ERROR' }).Count
 $skip = @($results | Where-Object { $_.Status -eq 'SKIP' }).Count
+
+# ---------- 落一份闸门日志（复盘要用它数「跑了几轮、哪道从没真跑过」） ----------
+# 追加写 out\verify-log.jsonl，一轮一行；out\ 本来就被 .gitignore 覆盖，不会进仓库。
+# 写失败只提示一句，绝不影响体检结论 —— 日志是给复盘用的，不是交付判据。
+if (-not $NoLog) {
+    try {
+        $logDir = Join-Path $root 'out'
+        if (-not (Test-Path -LiteralPath $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
+        $entry = [pscustomobject]@{
+            ts      = (Get-Date).ToString('o')
+            project = (Split-Path -Leaf $root)
+            root    = $root
+            self    = [bool]$Self
+            novideo = [bool]($NoVideo -or $Self)
+            exit    = $(if ($fail -gt 0) { 1 } else { 0 })
+            pass    = $pass
+            warn    = $warn
+            fail    = $fail
+            skip    = $skip
+            seconds = [math]::Round($swAll.Elapsed.TotalSeconds, 1)
+            gates   = @($results | ForEach-Object {
+                [pscustomobject]@{ name = $_.Name; status = $_.Status; detail = $_.Detail; ms = [math]::Round($_.Ms, 1) }
+            })
+        }
+        $json = $entry | ConvertTo-Json -Depth 6 -Compress
+        $logPath = Join-Path $logDir 'verify-log.jsonl'
+        [System.IO.File]::AppendAllText($logPath, $json + "`n", (New-Object System.Text.UTF8Encoding($false)))
+    } catch {
+        Write-Host ("日志没写成（不影响体检结论）：" + $_.Exception.Message) -ForegroundColor DarkYellow
+    }
+}
 
 Write-Host ''
 Write-Host ('-' * 66) -ForegroundColor DarkGray
