@@ -4,7 +4,7 @@
 查五件事：
   1. 文件存在且非空
   2. 分辨率与 timing.json 对得上
-  3. 时长与 timing.json 对得上（差 > 0.5s 判 ERROR）
+  3. 时长与 timing.json 对得上（差 > 0.5s 判 ERROR；读不出时长也算 ERROR——算不出差多少就没法交付）
   4. 码率没低到离谱（黑屏/空白渲染出来往往只有几百 Kbps）
   5. 该有声的片子真的有音轨（timing.json 里配了 audio.bgm，成片却没有 soun 轨 → ERROR）
 
@@ -139,6 +139,7 @@ def main() -> int:
     ap.add_argument("--min-bitrate", type=float, default=0.5, help="最低码率 Mbps，默认 0.5")
     ap.add_argument("--expect-audio", action="store_true", help="必须有音轨（--timing 里配了 audio.bgm 时自动开启）")
     ap.add_argument("--no-audio", action="store_true", help="明确要求静音片：有音轨就报警")
+    ap.add_argument("--allow-fragmented", action="store_true", help="分片 MP4（moof 系列）允许读不出时长")
     args = ap.parse_args()
 
     path = Path(args.file)
@@ -170,7 +171,24 @@ def main() -> int:
     print(f"大小：{size / 1024 / 1024:.2f} MB")
 
     if duration is None:
-        warns.append("读不出时长（moov/mvhd 缺失，可能是分片 MP4 或没封装完），用播放器确认")
+        # 读不出时长 ≠ 无所谓：以前这里只记 WARN，于是一个只有 ftyp、连 moov 都没有的
+        # 1.5 MB 垃圾文件（封装根本没写完）能拿到「0 ERROR / exit 0」——交付闸门对坏片判绿。
+        # 判据分三档：①体积已过 1 MB 却没有 moov → 封装坏了，ERROR；②timing 给了期望时长却读不出 →
+        # 算不出差多少，同样没法交付，ERROR；③其余（小文件、分片 MP4）仍 WARN，分片可显式放行。
+        moov_missing = find(buf, ["moov"]) is None
+        big = size >= 1024 * 1024
+        if moov_missing and big:
+            msg = (
+                f"读不出时长：{size / 1024 / 1024:.2f} MB 的文件里连 moov 都没有，封装坏了"
+                "（分片 MP4 请加 --allow-fragmented）"
+            )
+        else:
+            msg = "读不出时长（moov/mvhd 缺失，可能是分片 MP4 或没封装完），用播放器确认"
+        broken = (moov_missing and big) or exp_dur is not None
+        if broken and not args.allow_fragmented:
+            errors.append(msg)
+        else:
+            warns.append(msg)
         print("时长：读不出")
     else:
         br = size * 8 / duration / 1_000_000 if duration else 0
