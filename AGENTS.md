@@ -82,7 +82,7 @@ scripts-win\verify.cmd .   # 交付前体检：十一道闸门一次跑完，有
 #   （默认没有成片就判失败；只想看进度加 -NoVideo，-Self 自动开。每轮结果默认追加进 out/verify-log.jsonl，-NoLog 关，复盘靠它数闸门历史。编码闸门只在 -Self 时跑，项目体检实出 10 行）
 python scripts-win\check_publish.py -Project .          # 发布物料体检：标题字数、tag 数量、封面比例、文案数字对账
 python scripts-win\check_publish.py -Project . --write   # 按 publish.json 生成 发布物料.md（md 别手改）
-scripts-win\retro.cmd -Project .            # 复盘：自动填事实 + 三个问题 → 复盘.md；本机有语雀 token 就顺手同步进「自媒体相关库」（--no-yuque 关，-Yuque 强制且失败要报错）
+scripts-win\retro.cmd -Project .            # 复盘：自动填事实 + 三个问题 → 复盘.md；本机有语雀 token 且配了库名（`config/yuque_repo.txt`）就顺手同步（--no-yuque 关，-Yuque 强制且失败要报错）
 ```
 
 时间只改 `timing.json`；**文案也只改它**（`scenes[].onscreen`，槽位见 `src/lib/timing.ts` 的 `OnscreenMap`）；场景在 `src/scenes/`（只管布局和动效，不写字）；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
