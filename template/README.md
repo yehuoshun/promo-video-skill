@@ -57,6 +57,8 @@ out/                   渲染产物（不进 git）
 | `BigType` | 动态大字（`slam` 砸出 / `mask` 擦出） | `lines` / `mode` / `size` / `from` | 痛点、结论、口号 |
 | `IsometricCards` | 等距视差卡片阵列 | `items` / `columns` / `cardWidth` / `tilt` / `spin` | 功能矩阵、模块全景、定价档位 |
 | `CountUp` | 数字滚动到位 | `value` / `decimals` / `suffix` / `start` | 数据卖点（用户数、准确率、耗时） |
+| `Lottie` | 播放 Lottie 矢量动画（按帧 seek） | `data` / `from` / `width` / `height` / `loop` / `speed` | 品牌标志、插画动效；素材动画要铺满整段 |
+| `Morph` | 形状变形（SVG path 插值） | `from` / `to` / `fromAt` / `duration` / `pingPong` | 形态转变：图标变结果、方案 A 变方案 B |
 
 用法：在场景组件里拿 `useCurrentFrame()` 的**场景内帧号**（不是全局帧）喂进去。
 

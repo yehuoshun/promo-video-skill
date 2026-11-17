@@ -53,6 +53,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   check_offline.py      第 11 道闸门（编号沿用方案文档；verify 清单里它是第 5 行「离线素材」）。离线素材体检：帧号连续、尺寸与 meta 严格一致、出图宽高都 ≥ 显示尺寸的 2 倍（`--min-size-ratio` 可调，`--min-width-ratio` 是旧名）、体积上限、license/source 非空（没有 public/offline 就 SKIP）
   fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
   check_publish.py      发布物料体检：标题字数、tag 数量、封面/视频比例（自己读 PNG IHDR 与 mp4 tkhd，不依赖 ffprobe）、文案里的秒数/帧数/闸门数与 timing.json 对账；`--write` 从 publish.json 生成 发布物料.md
+  retro.py/.cmd         交付后复盘：自动填事实（片长/帧数/两版体积/闸门历史/静帧张数/红线对账）+ 三个问题 → 复盘.md，并向 docs/错误清单.md 追加一行
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
   timing.json           分镜与时间（唯一真相）
@@ -62,7 +63,8 @@ template/              可复制的 Remotion 工程
   src/effects/          八个效果组件：网格渐变底 / 颗粒+暗角 / 光扫 / 动态大字 / 等距卡片 / 数字滚动 / Lottie 矢量动画 / 形状 morph
   src/components/       Backdrop（径向光 + 网格 + 暗角 + 随拍呼吸）
   src/scenes/           Hook / Showcase / Cta / EffectsLab（样板间）
-examples/               只放自包含的纯文本样张，合计 10 KB（见本节末尾说明）
+examples/               77 个文件、约 7.2 MB：一个完整实例工程 + 三份纯文本样张（见本节末尾说明）
+  self-promo/           52.8 秒的自宣片完整实例工程（74 个文件，含 4.5 MB 配乐与封面）
   card.html             1920×1080 样张，换配色只改 3 个 CSS 变量
   bad.html              故意做错的样张（拉伸图 / 裁字 / 出画 / 缺字体），用来验证探针真的会 fail
   timing.example.json   52 秒 / 60fps / 14 场景的示例分镜（含两段快切蒙太奇）
@@ -71,7 +73,7 @@ docs/                  给人看的：借鉴清单、踩坑记录、效果扩容
 out/                   静帧、对比图、成片（不进 git）
 ```
 
-> **`examples/` 为什么只剩三个文件**：P7 那支真片的完整工程 `examples/yuque-promo/`（27 个 tsx/ts + 7 张真实截图 2.2 MB + package-lock 161 KB）已移出仓库以控制体积，只保留闸门真正要用的纯文本样张——反例 `bad.html`、对照 `card.html`、示例分镜 `timing.example.json`，三个合计 10 KB，全部自包含、零图片依赖。
+> **`examples/` 里现在有什么**：`self-promo/` 是自宣片的完整实例工程（52.8 秒，74 个文件，含 4.5 MB 配乐与封面），整个目录可以直接拷去当参考；闸门真正要用的仍是三份纯文本样张——反例 `bad.html`、对照 `card.html`、示例分镜 `timing.example.json`，合计 10 KB，全部自包含、零图片依赖。`examples/` 在 git 里共 77 个文件、约 7.2 MB，大头就是 `self-promo/public/bgm.wav` 那 4.5 MB。P7 那支真片的完整工程 `examples/yuque-promo/`（27 个 tsx/ts + 7 张真实截图 2.2 MB + package-lock 161 KB）已移出仓库以控制体积。
 > 取回完整工程：`git checkout 600feb7 -- examples/yuque-promo`（`600feb7` 是它被移出前的最后一个提交）。只想看结构的话 `git show 600feb7:examples/yuque-promo/timing.json` 就够——那是一份 47.5s / 1425 帧的真片时间轴。
 > 顺带一提：这个目录原先看着占空间，其实被 git 跟踪的只有 2.53 MB，真正撑大的是 `yuque-promo/node_modules` 和 `out/`——它们本来就在 `.gitignore` 里，删掉不省仓库体积，下次 `npm i` 还会长回来。
 
@@ -127,6 +129,8 @@ out/                   静帧、对比图、成片（不进 git）
 | `BigType` | 动态大字（`slam` 砸出 / `mask` 擦出） | 痛点、结论、口号 |
 | `IsometricCards` | 等距视差卡片阵列 | 功能矩阵、模块全景、定价档位 |
 | `CountUp` | 数字滚动到位 | 数据卖点（用户数、准确率、耗时） |
+| `Lottie` | 矢量动画播放（`@remotion/lottie`，按帧 seek） | 品牌标志、插画动效；素材动画要铺满整段，别让段尾站住 |
+| `Morph` | 形状变形（SVG path 插值，`pingPong` 回环） | 形态的转变：图标变结果、方案 A 变方案 B |
 
 | 命令 | 结果 |
 |---|---|
@@ -192,7 +196,7 @@ scripts-win\verify.cmd template -Self       # 体检本仓库自己（会跑 exa
 scripts-win\verify.cmd ..\proj -Video ..\proj\out\final-4k.mp4 -Strict -Quiet
 ```
 
-十一步：目录结构 → 环境（doctor）→ 时间轴（check_timing）→ 素材（check_assets）→ 离线素材（check_offline，没有 public/offline/ 就 SKIP）→ 配乐（check_audio）→ 同步（check_sync）→ 静帧（check_stills）→ 排版（probe，逐个 HTML；只覆盖 HTML 样张，TSX 场景没有对应闸门，见下）→ 成片（check_video）→ 编码（fix-encoding，只在 -Self 时跑）。
+十一步：目录结构 → 环境（doctor）→ 时间轴（check_timing）→ 素材（check_assets）→ 离线素材（check_offline，没有 public/offline/ 就 SKIP）→ 配乐（check_audio）→ 同步（check_sync）→ 静帧（check_stills）→ 排版（probe，逐个 HTML；只覆盖 HTML 样张，TSX 场景没有对应闸门，见下）→ 成片（check_video）→ 编码（fix-encoding，只在 -Self 时跑）。所以默认调用只出 **10 行**，「编码」那行只在 `-Self` 时才出现；每轮结果默认追加进 `out\verify-log.jsonl`（`-NoLog` 关），`retro.cmd` 复盘时靠它数闸门跑了几轮、哪道每轮都 SKIP。
 
 `-Html` 的三处原来会误导人的地方一并修了：**相对路径**（相对当前目录或体检目录都认，脚本自己转绝对；找不到当场报「找不到 HTML」并列出试过的几个路径，不用等到第 8 步才露馅）；**多个文件**（`-Html a.html,b.html` 逗号隔开，也吃通配符 `-Html 样帧\*.html`——从 `verify.cmd` 调进来时走的是 `powershell -File`，cmd.exe 会把整串当**一个**字符串传，`[string[]]` 参数不会替你按逗号拆，得脚本自己拆）；**目录传错**（体检目录不是片子工程、缺 `timing.json` 或 `src\scenes` 时只打一行提示就 `exit 1`，不再把九道闸门挨个跑一遍刷屏——以前那种情况下真问题「目录指错了」会被几十行连锁报错埋掉）。
 
@@ -357,7 +361,12 @@ npm run render       # 1080p，约 30 秒
 npm run render4k     # 4K，约 80 秒
 
 # 7. 交付前体检：一条命令跑完十一道闸门，有 ERROR 就 exit 1
+#    默认没有成片就判失败（交付体检不是进度体检）；只想看进度加 -NoVideo（-Self 自动开）
+#    每轮结果默认追加进 out\verify-log.jsonl，-NoLog 才关
 scripts-win\verify.cmd .
+
+# 8. 交付后复盘：脚本自动填事实（片长/帧数/闸门历史/静帧张数），你只答三个问题
+scripts-win\retro.cmd -Project .
 ```
 
 npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](docs/windows-踩坑记录.md) 第 1 条），用 `npm.cmd run render`。
