@@ -490,17 +490,6 @@ class YuqueError(RuntimeError):
     pass
 
 
-def looks_ready_for_yuque(explicit: str | None) -> bool:
-    """本机到底有没有可用 token —— 有就默认顺手同步，没有就静默跳过。
-
-    这里只回答「能不能连」，不验证 token 是否还有效（那要发请求，属于 sync_yuque 的事）。
-    """
-    try:
-        return bool(find_yuque_token(explicit))
-    except YuqueError:
-        return False
-
-
 def find_yuque_token(explicit: str | None = None) -> str | None:
     """token 的找法：--yuque-token-file → 环境变量 → 工作区 config → 用户目录。
 
@@ -659,8 +648,7 @@ def main() -> int:
     ap.add_argument("--no-ledger", action="store_true", help="不往 docs/错误清单.md 追加")
     ap.add_argument("--stdout", action="store_true", help="只打到控制台，不落盘")
     ap.add_argument("-Yuque", "--yuque", action="store_true",
-                    help="同步到语雀知识库（本机能找到 token 和库名时默认就同步；失败要报错）")
-    ap.add_argument("--no-yuque", action="store_true", help="这次不推语雀（本机有 token 也跳过）")
+                    help="可选：把这次复盘同步到语雀知识库（默认不推，不碰网络）")
     ap.add_argument("--yuque-repo", default=None,
                     help="语雀知识库 namespace <登录名>/<库slug>（默认读本机 config/yuque_repo.txt）")
     ap.add_argument("--yuque-token-file", default=None, help="语雀 token 文件路径（默认自动找）")
@@ -691,19 +679,15 @@ def main() -> int:
     print(f"  verify 历史 {facts['runs']} 轮" + (f"，从没真跑过：{'、'.join(facts['never'])}" if facts["never"] else ""))
     if not args.no_ledger:
         print("  " + append_ledger(facts))
-    if args.yuque or (not args.no_yuque and YUQUE_REPO
-                      and looks_ready_for_yuque(args.yuque_token_file)):
+    if args.yuque:
+        # 语雀是可选项：不加 -Yuque 就只写本地 复盘.md，不碰网络
         facts["token_file"] = args.yuque_token_file
         try:
             for m in sync_yuque(facts, md, with_ledger=not args.no_ledger):
                 print("  " + m)
         except YuqueError as e:
-            if args.yuque:
-                print(f"  [WARN] 语雀同步失败：{e}")
-                print("         （本地 复盘.md 已写好，不影响本次交付）")
-            else:
-                # 只是「本机配了 token 就顺手同步」的默认行为，失败不该打扰交付
-                print(f"  语雀：跳过同步（{e}）")
+            print(f"  [WARN] 语雀同步失败：{e}")
+            print("         （本地 复盘.md 已写好，不影响本次交付）")
     if facts["answered"]:
         print(f"  三个问题已回答 {facts['answered']}/3（重跑会保留，只刷新事实区）。")
     else:
