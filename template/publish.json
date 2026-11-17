@@ -1,0 +1,36 @@
+{
+  "_说明": [
+    "发布物料的唯一真相。写完跑：python scripts-win\\check_publish.py -Project . --write",
+    "---write 会生成 发布物料.md（给平台复制粘贴的那份），别手改 md，改这里再生成。",
+    "标题/正文里可以用 @duration @frames @fps @gates @scenes @bpm，生成时换成 timing.json 里的真值；",
+    "写死的数字会和 timing.json 对账，对不上就是 ERROR。",
+    "三个平台的键名固定为 bilibili / douyin / xiaohongshu，别改。"
+  ],
+  "repo": "",
+  "platforms": {
+    "bilibili": {
+      "video": "",
+      "cover": "",
+      "title": "",
+      "body": [],
+      "tags": [],
+      "note": "分区 科技 → 计算机技术；转载声明填「自制」"
+    },
+    "douyin": {
+      "video": "",
+      "cover": "",
+      "title": "",
+      "body": [],
+      "tags": [],
+      "note": ""
+    },
+    "xiaohongshu": {
+      "video": "",
+      "cover": "",
+      "title": "",
+      "body": [],
+      "tags": [],
+      "note": ""
+    }
+  }
+}

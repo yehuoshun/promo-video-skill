@@ -28,6 +28,7 @@ references/            按需加载的长文档，AI 只在对应阶段读
   节奏.md               镜头时长底线 + 信息密度 + timing.json 结构
   校验清单.md           自动闸门 / 审图 / 交付前三层
   素材.md               截图规格、版权边界、降级顺序
+  发布物料.md           三平台标题/简介/tag 的口径、检查器查什么、常见坑
 scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   doctor.ps1/.cmd       环境体检：Node/npm/Python/Pillow/Chrome/git/中文字体/ffmpeg/磁盘
   shot.ps1/.cmd         HTML 截图，默认 1920×1080@2x = 3840×2160
@@ -51,6 +52,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   render-offline.ps1/.cmd 离线渲染通道：外部渲染器（Manim / Blender / Synfig）出的帧统一成 public/offline/<片段名>/frame_0000.png + meta.json
   check_offline.py      第 11 道闸门（编号沿用方案文档；verify 清单里它是第 5 行「离线素材」）。离线素材体检：帧号连续、尺寸与 meta 严格一致、出图宽高都 ≥ 显示尺寸的 2 倍（`--min-size-ratio` 可调，`--min-width-ratio` 是旧名）、体积上限、license/source 非空（没有 public/offline 就 SKIP）
   fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
+  check_publish.py      发布物料体检：标题字数、tag 数量、封面/视频比例（自己读 PNG IHDR 与 mp4 tkhd，不依赖 ffprobe）、文案里的秒数/帧数/闸门数与 timing.json 对账；`--write` 从 publish.json 生成 发布物料.md
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
   timing.json           分镜与时间（唯一真相）

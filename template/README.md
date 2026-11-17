@@ -24,6 +24,7 @@ Remotion 自带的 ffmpeg 会处理编码，**本机没装 ffmpeg 也能出 mp4*
 | 配色、字体 | `src/lib/theme.ts` |
 | 新增一种动效 | `src/lib/anim.ts`（只加纯函数，别引入会自己跑的动画库） |
 | 接一个新 layout | `src/Root.tsx` 的 `LAYOUTS` |
+| 发布用的标题 / 简介 / tag | `publish.json`（`python ..\scripts-win\check_publish.py -Project . --write` 生成 `发布物料.md`） |
 
 `timing.json` 是唯一的时间真相：画面、字幕、节拍都从它读。场景组件里**不许写死秒数**。
 
@@ -81,4 +82,5 @@ const local = frame - sceneRange(timing, "hook-01").start;
 ..\scripts-win\doctor.cmd                                   # 环境
 python ..\scripts-win\check_timing.py timing.json --allow-duration
 python ..\scripts-win\check_video.py out\demo-1080p.mp4 --timing timing.json
+python ..\scripts-win\check_publish.py -Project .        # 发布物料（写完 publish.json 之后）
 ```
