@@ -283,21 +283,24 @@ def render_md(pub: dict, proj: Path, facts: dict) -> str:
         item = (pub.get("platforms") or {}).get(pid) or {}
         done = item.get("published")
         if isinstance(done, dict) and done.get("url"):
-            rows.append(f"| {SPEC[pid]['name']} | {done.get('at') or '—'} | <{done['url']}> | "
-                        f"{fill(clean(str(done.get('note') or '')), tok, Report(), '备注')} |")
+            # 链接、时刻、备注（合集名之类）都是个人数据：这个 md 会进公开仓库，
+            # 所以只写「哪家平台已发布」，细节留在本机 publish.local.json，终端里打出来。
+            rows.append(f"| {SPEC[pid]['name']} | 已发布 |")
     if rows:
-        out.append("| 平台 | 发布时刻（含时区） | 链接 | 备注 |")
-        out.append("|---|---|---|---|")
+        out.append("| 平台 | 状态 |")
+        out.append("|---|---|")
         out.extend(rows)
         out.append("")
-        out.append("> 这一节来自 `publish.json` 各平台的 `published` 字段；发出去之后回填，复盘时直接拿它对账。")
+        out.append("> 链接、发布时刻、备注只存本机 `publish.local.json`（不进仓库）；"
+                   "`check_publish.cmd` 会在终端把它们打出来。")
     else:
-        out.append("还没发。发完在 `publish.json` 对应平台里补一段，再跑一次 `--write`：")
+        out.append("还没发。发完在本机 `publish.local.json` 里补一段，再跑一次 `--write`：")
         out.append("")
         out.append("```json")
-        out.append('"published": { "url": "https://www.bilibili.com/video/BVxxxxxxxxxx/",')
-        out.append('               "at": "2026-01-01T12:00:00+08:00",')
-        out.append('               "note": "合集「开源分享」第 2 集" }')
+        out.append('{ "platforms": { "bilibili": { "published": {')
+        out.append('    "url": "https://www.bilibili.com/video/BVxxxxxxxxxx/",')
+        out.append('    "at": "2026-01-01T12:00:00+08:00",')
+        out.append('    "note": "合集名 第 2 集" } } } }')
         out.append("```")
     out.append("")
     out.append("---")
@@ -311,6 +314,37 @@ def render_md(pub: dict, proj: Path, facts: dict) -> str:
         out.append(f"3. 地址三处统一：`{repo.replace('https://','')}`（片尾、B站简介、小红书正文同一串）。")
     out.append("")
     return "\n".join(out)
+
+
+def merge_local(pub: dict, proj: Path) -> tuple[dict, dict]:
+    """把本机的 publish.local.json 叠加到 publish.json 上，返回 (合并结果, 覆盖层)。
+
+    为什么要分两个文件：链接、发布时刻、账号、播放数是个人数据，而这个仓库是公开的。
+    publish.local.json 被 .gitignore 挡住（永远不进 git），检查器照旧能核对它。
+    """
+    path = proj / "publish.local.json"
+    if not path.is_file():
+        return pub, {}
+    try:
+        overlay = json.loads(path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError as e:
+        print(f"  [WARN] publish.local.json 不是合法 JSON，忽略：{e}")
+        return pub, {}
+    if not isinstance(overlay, dict):
+        return pub, {}
+    plats = dict(pub.get("platforms") or {})
+    for pid, item in (overlay.get("platforms") or {}).items():
+        if not isinstance(item, dict):
+            continue
+        if isinstance(plats.get(pid), dict):
+            merged = dict(plats[pid])
+            merged.update(item)
+            plats[pid] = merged
+        else:
+            plats[pid] = item
+    out = dict(pub)
+    out["platforms"] = plats
+    return out, overlay
 
 
 def check_published(plat: dict, rep: Report) -> None:
@@ -472,13 +506,21 @@ def main() -> int:
         return 0
 
     try:
-        pub = json.loads(pub_path.read_text(encoding="utf-8"))
+        pub = json.loads(pub_path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as e:
         print(f"[ERROR] publish.json 不是合法 JSON：{e}")
         return 1
 
+    pub, overlay = merge_local(pub, proj)
+
     print(f"发布物料：{pub_path}")
+    if overlay:
+        print("  本机覆盖：publish.local.json（链接/时刻只在本机，不写进 发布物料.md）")
     check(proj, pub, rep)
+    for pid, item in (pub.get("platforms") or {}).items():
+        done = item.get("published") if isinstance(item, dict) else None
+        if isinstance(done, dict) and done.get("url"):
+            print(f"  已发布：{SPEC.get(pid, {}).get('name', pid)} {done.get('at') or '—'} {done['url']}")
 
     facts = load_timing(proj)
     md = render_md(pub, proj, facts)

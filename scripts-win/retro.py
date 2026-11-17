@@ -301,18 +301,47 @@ def carry_answers(path: Path) -> list[str]:
     return ans[:3]
 
 
+def _read_json(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def publish_data(root: Path) -> dict:
+    """publish.json 叠上本机的 publish.local.json。
+
+    链接、发布时刻、账号、播放数都是个人数据，这个仓库是公开的——它们只写在本地的
+    publish.local.json（.gitignore 挡住，永远不进 git），工具照旧读得到。
+    """
+    pub = _read_json(root / "publish.json")
+    overlay = _read_json(root / "publish.local.json")
+    plats = dict(pub.get("platforms") or {})
+    for pid, item in (overlay.get("platforms") or {}).items():
+        if not isinstance(item, dict):
+            continue
+        if isinstance(plats.get(pid), dict):
+            merged = dict(plats[pid])
+            merged.update(item)
+            plats[pid] = merged
+        else:
+            plats[pid] = item
+    out = dict(pub)
+    if plats:
+        out["platforms"] = plats
+    return out
+
+
 def published_facts(root: Path) -> list[tuple[str, str, str]]:
-    """publish.json 里回填过的发布记录：(平台, 时刻, 链接)。
+    """回填过的发布记录：(平台, 时刻, 链接)。
 
     发没发出去，只有外部链接能证明——本地 out/ 里有 mp4 不代表平台上有这支片子。
+    数据可能放在 publish.json，也可能只放在本机的 publish.local.json。
     """
-    path = root / "publish.json"
-    if not path.is_file():
+    if not (root / "publish.json").is_file() and not (root / "publish.local.json").is_file():
         return []
-    try:
-        pub = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (json.JSONDecodeError, OSError):
-        return []
+    pub = publish_data(root)
     names = {"bilibili": "B站", "douyin": "抖音", "xiaohongshu": "小红书"}
     rows: list[tuple[str, str, str]] = []
     for pid, item in (pub.get("platforms") or {}).items():
@@ -369,12 +398,14 @@ def build_md(root: Path, prev_answers: list[str] | None = None) -> tuple[str, di
         if x["dims"]:
             bits.append(f"{x['dims'][0]}×{x['dims'][1]}")
         add(f"| {x['kind']} | " + " / ".join(bits) + " |")
-    if (root / "publish.json").is_file():
-        pub = published_facts(root)
-        if pub:
-            add("| 发布 | " + "；".join(f"{n} {at} [{url}]({url})" for n, at, url in pub) + " |")
+    pub_rows = published_facts(root)
+    if (root / "publish.json").is_file() or (root / "publish.local.json").is_file():
+        if pub_rows:
+            # 复盘.md 是仓库里的文件：只写「发哪家、发没发」，链接和时刻留在本机
+            add("| 发布 | " + "、".join(n for n, _, _ in pub_rows)
+                + " 已发布（链接与时刻只在本机 `publish.local.json`，不进仓库） |")
         else:
-            add("| 发布 | 还没回填——发出去之后在 `publish.json` 补 `published`，再跑一次本命令 |")
+            add("| 发布 | 还没发——发出去之后在本机 `publish.local.json` 里补 `published`，再跑一次本命令 |")
     add("")
 
     # 红线对账：四条红线里能数出来的部分，别让人靠记忆判断
@@ -466,7 +497,7 @@ def build_md(root: Path, prev_answers: list[str] | None = None) -> tuple[str, di
 
     facts = {"project": root.name, "duration": f["duration"], "runs": len(g["runs"]),
              "never": g["never"], "red": dict(g["red"]), "first": g["runs"][0] if g["runs"] else None,
-             "answered": sum(1 for x in ans if x)}
+             "published": pub_rows, "answered": sum(1 for x in ans if x)}
     return "\n".join(L) + "\n", facts
 
 
@@ -706,6 +737,9 @@ def main() -> int:
     out.write_text(md, encoding="utf-8", newline="\n")
     print(f"复盘：{out}")
     print(f"  verify 历史 {facts['runs']} 轮" + (f"，从没真跑过：{'、'.join(facts['never'])}" if facts["never"] else ""))
+    for name, at, url in facts.get("published") or []:
+        # 链接和时刻只打到屏幕上（来自本机 publish.local.json），不写进 复盘.md
+        print(f"  发布：{name} {at} {url}")
     if not args.no_ledger:
         print("  " + append_ledger(facts))
     if args.yuque:
