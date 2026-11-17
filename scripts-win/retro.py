@@ -246,7 +246,28 @@ def git_facts(root: Path) -> dict | None:
 # ---------------- 渲染 ----------------
 
 
-def build_md(root: Path) -> tuple[str, dict]:
+def carry_answers(path: Path) -> list[str]:
+    """重跑时保上一版人写下的三个答案——复盘的价值在人的判断，脚本不该覆盖它。"""
+    if not path.is_file():
+        return []
+    try:
+        txt = path.read_text(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        return []
+    seg = re.search(r"## 三、[^\n]*\n(.*?)(?=\n## |\Z)", txt, re.S)
+    if not seg:
+        return []
+    ans: list[str] = []
+    for line in seg.group(1).splitlines():
+        m = re.match(r"^\s+-\s?(.*)$", line)
+        if m:
+            ans.append(m.group(1).strip())
+    while len(ans) < 3:
+        ans.append("")
+    return ans[:3]
+
+
+def build_md(root: Path, prev_answers: list[str] | None = None) -> tuple[str, dict]:
     f = film_facts(root)
     a = asset_facts(root)
     v = video_facts(root)
@@ -362,12 +383,18 @@ def build_md(root: Path) -> tuple[str, dict]:
     # 三、三个问题
     add("## 三、只有人知道的")
     add("")
-    add("1. **最贵的一次返工是什么？**（哪个闸门没拦住，或哪条规范没说清）")
-    add("   - ")
-    add("2. **最后才发现错的是哪一帧、哪句话？**")
-    add("   - ")
-    add("3. **下一部片开工前先改哪一处？**（改闸门、改规范、还是改素材流程）")
-    add("   - ")
+    ans = list(prev_answers or []) or ["", "", ""]
+    if any(x for x in ans):
+        add("> 上次写的答案已原样保留（重跑只刷新事实区），要改就直接改这三行。")
+        add("")
+    qs = [
+        "1. **最贵的一次返工是什么？**（哪个闸门没拦住，或哪条规范没说清）",
+        "2. **最后才发现错的是哪一帧、哪句话？**",
+        "3. **下一部片开工前先改哪一处？**（改闸门、改规范、还是改素材流程）",
+    ]
+    for q, a in zip(qs, ans):
+        add(q)
+        add("   - " + (a or ""))
     add("")
     add("## 四、账本")
     add("")
@@ -375,7 +402,8 @@ def build_md(root: Path) -> tuple[str, dict]:
     add("")
 
     facts = {"project": root.name, "duration": f["duration"], "runs": len(g["runs"]),
-             "never": g["never"], "red": dict(g["red"]), "first": g["runs"][0] if g["runs"] else None}
+             "never": g["never"], "red": dict(g["red"]), "first": g["runs"][0] if g["runs"] else None,
+             "answered": sum(1 for x in ans if x)}
     return "\n".join(L) + "\n", facts
 
 
@@ -430,18 +458,21 @@ def main() -> int:
         print(f"[ERROR] 这不是片子工程：{root} 下没有 timing.json")
         return 2
 
-    md, facts = build_md(root)
+    out = root / args.out
+    md, facts = build_md(root, carry_answers(out))
     if args.stdout:
         print(md)
         return 0
 
-    out = root / args.out
     out.write_text(md, encoding="utf-8", newline="\n")
     print(f"复盘：{out}")
     print(f"  verify 历史 {facts['runs']} 轮" + (f"，从没真跑过：{'、'.join(facts['never'])}" if facts["never"] else ""))
     if not args.no_ledger:
         print("  " + append_ledger(facts))
-    print("  下一步：把第三节三个问题各写一句话（空着比编一句漂亮话有用）。")
+    if facts["answered"]:
+        print(f"  三个问题已回答 {facts['answered']}/3（重跑会保留，只刷新事实区）。")
+    else:
+        print("  下一步：把第三节三个问题各写一句话（空着比编一句漂亮话有用）。")
     return 0
 
 
