@@ -53,7 +53,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   check_offline.py      第 11 道闸门（编号沿用方案文档；verify 清单里它是第 5 行「离线素材」）。离线素材体检：帧号连续、尺寸与 meta 严格一致、出图宽高都 ≥ 显示尺寸的 2 倍（`--min-size-ratio` 可调，`--min-width-ratio` 是旧名）、体积上限、license/source 非空（没有 public/offline 就 SKIP）
   fix-encoding.ps1/.cmd 编码规整：.ps1 补 BOM + CRLF、.cmd 转 CRLF、其余 LF（-Check 只查不改）
   check_publish.py      发布物料体检：标题字数、tag 数量、封面/视频比例（自己读 PNG IHDR 与 mp4 tkhd，不依赖 ffprobe）、文案里的秒数/帧数/闸门数与 timing.json 对账；`--write` 从 publish.json 生成 发布物料.md
-  retro.py/.cmd         交付后复盘：自动填事实（片长/帧数/两版体积/闸门历史/静帧张数/红线对账）+ 三个问题 → 复盘.md，并向 docs/错误清单.md 追加一行
+  retro.py/.cmd         交付后复盘：自动填事实（片长/帧数/两版体积/闸门历史/静帧张数/红线对账）+ 三个问题 → 复盘.md，并向 docs/错误清单.md 追加一行；`-Yuque` 顺手同步进语雀「自媒体相关库」（token 只读本机，不进仓库）
   sheet.py              把一目录静帧拼成对比图（审图用）
 template/              可复制的 Remotion 工程
   timing.json           分镜与时间（唯一真相）

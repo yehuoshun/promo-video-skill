@@ -83,6 +83,7 @@ scripts-win\verify.cmd .   # 交付前体检：十一道闸门一次跑完，有
 python scripts-win\check_publish.py -Project .          # 发布物料体检：标题字数、tag 数量、封面比例、文案数字对账
 python scripts-win\check_publish.py -Project . --write   # 按 publish.json 生成 发布物料.md（md 别手改）
 scripts-win\retro.cmd -Project .            # 复盘：自动填事实 + 三个问题 → 复盘.md
+scripts-win\retro.cmd -Project . -Yuque     # 同上，并把复盘与账本同步进语雀「自媒体相关库」（token 读本机，不进仓库）
 ```
 
 时间只改 `timing.json`；**文案也只改它**（`scenes[].onscreen`，槽位见 `src/lib/timing.ts` 的 `OnscreenMap`）；场景在 `src/scenes/`（只管布局和动效，不写字）；配色在 `src/lib/theme.ts`；动效函数在 `src/lib/anim.ts`。
