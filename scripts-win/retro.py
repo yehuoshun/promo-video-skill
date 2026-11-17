@@ -461,7 +461,11 @@ def main() -> int:
     out = root / args.out
     md, facts = build_md(root, carry_answers(out))
     if args.stdout:
-        print(md)
+        try:
+            sys.stdout.write(md)
+            sys.stdout.flush()
+        except BrokenPipeError:  # PowerShell 里 `| Select-Object -First N` 会提前关管道
+            pass
         return 0
 
     out.write_text(md, encoding="utf-8", newline="\n")
