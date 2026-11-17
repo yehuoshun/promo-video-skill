@@ -52,12 +52,35 @@ JUNK_MP4 = re.compile(r"^(effects|lab-|det-|repro)|-check")
 # 提交信息里自陈的返工标记（「补 check_motion 的六类漏判」「修假绿」这类）
 REWORK_WORDS = ("修", "补", "漏判", "假绿", "放绿", "误判", "必红", "假红")
 
-# 语雀：账本默认落在「自媒体相关库」（https://www.yuque.com/yehuoshun/wy85px）。
-# token 只从本机读（环境变量 / 工作区 config / 用户目录），仓库里不放任何凭据。
+# 语雀：目标知识库（namespace）由本机决定，不写死在仓库里——这是公开仓库，
+# 谁的账号、哪个库属于「本机配置」，不该随代码发出去。
+# 取值顺序：--yuque-repo → YUQUE_REPO 环境变量 → 工作区 config/yuque_repo.txt → ~/.yuque/repo.txt。
+# token 同样只从本机读，仓库里不放任何凭据。
 YUQUE_API = "https://www.yuque.com/api/v2"
-YUQUE_REPO = os.environ.get("YUQUE_REPO", "yehuoshun/wy85px")
 YUQUE_LEDGER_SLUG = "promo-retro-ledger"
 YUQUE_LEDGER_TITLE = "宣传片复盘账本"
+# 由 main() 按 resolve_yuque_repo() 填；空串 = 本机没配，跳过同步
+YUQUE_REPO = ""
+
+
+def resolve_yuque_repo(explicit: str | None = None) -> str:
+    """目标知识库 namespace：显式参数 → 环境变量 → 本机配置文件。都没有就返回空串。"""
+    if explicit and explicit.strip():
+        return explicit.strip()
+    env = (os.environ.get("YUQUE_REPO") or "").strip()
+    if env:
+        return env
+    # 配置放在「本仓库所在工作区」的根 config/ 下，和 token 同一个地方
+    for p in (TOOL_REPO.parent.parent / "config" / "yuque_repo.txt",
+              Path.home() / ".yuque" / "repo.txt"):
+        try:
+            if p.is_file():
+                v = p.read_text(encoding="utf-8-sig", errors="replace").strip()
+                if v:
+                    return v.splitlines()[0].strip()
+        except OSError:
+            continue
+    return ""
 
 
 def human_size(n: float) -> str:
@@ -181,7 +204,7 @@ def gate_facts(root: Path) -> dict:
     p = root / "out" / "verify-log.jsonl"
     runs: list[dict] = []
     if p.is_file():
-        for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+        for line in p.read_text(encoding="utf-8-sig", errors="replace").splitlines():
             line = line.strip()
             if not line:
                 continue
@@ -489,19 +512,19 @@ def find_yuque_token(explicit: str | None = None) -> str | None:
         p = Path(explicit).expanduser()
         if not p.is_file():
             raise YuqueError(f"--yuque-token-file 指向的文件不存在：{p}")
-        tok = p.read_text(encoding="utf-8", errors="replace").strip()
+        tok = p.read_text(encoding="utf-8-sig", errors="replace").strip()
         if not tok:
             raise YuqueError(f"--yuque-token-file 指向的文件是空的：{p}")
         return tok
     if os.environ.get("YUQUE_TOKEN"):
         return os.environ["YUQUE_TOKEN"].strip()
-    # TOOL_REPO 是 .../DeepSeekWorkSpace/code/promo-video-skill，配置在工作区根 config/
+    # 配置放在「本仓库所在工作区」的根 config/ 下，和库名同一个地方
     cands.append(TOOL_REPO.parent.parent / "config" / "yuque_token.txt")
     cands.append(Path.home() / ".yuque" / "token.txt")
     for p in cands:
         try:
             if p.is_file():
-                tok = p.read_text(encoding="utf-8", errors="replace").strip()
+                tok = p.read_text(encoding="utf-8-sig", errors="replace").strip()
                 if tok:
                     return tok
         except OSError:
@@ -527,7 +550,8 @@ def _yuque(token: str, method: str, path: str, payload: dict | None = None,
             if e.code == 404:
                 raise YuqueError(f"404 {path}") from e
             last = f"HTTP {e.code} {path}：{detail}"
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+            # ValueError 兜住 URL 里混进 BOM 这类编码错，别让一个坏字符掀翻整次复盘
             last = f"{path} 连不上：{e}"
         if attempt < retries:
             continue
@@ -563,6 +587,10 @@ def _yuque_toc_append(token: str, doc_id: int) -> str:
 
 def sync_yuque(facts: dict, md: str, with_ledger: bool = True) -> list[str]:
     """把复盘文档 upsert 到知识库，并往账本文档追加一行。返回给人看的几行结果。"""
+    if not YUQUE_REPO:
+        # 仓库是公开的，库名不写死在代码里；本机没配就别发请求
+        raise YuqueError("没配语雀知识库：--yuque-repo、YUQUE_REPO、"
+                         "工作区 config/yuque_repo.txt 都没有")
     token = find_yuque_token(facts.get("token_file"))
     if not token:
         raise YuqueError("没找到语雀 token：--yuque-token-file、YUQUE_TOKEN、"
@@ -631,14 +659,14 @@ def main() -> int:
     ap.add_argument("--no-ledger", action="store_true", help="不往 docs/错误清单.md 追加")
     ap.add_argument("--stdout", action="store_true", help="只打到控制台，不落盘")
     ap.add_argument("-Yuque", "--yuque", action="store_true",
-                    help=f"同步到语雀知识库（默认 {YUQUE_REPO}；本机能找到 token 时默认就同步）")
+                    help="同步到语雀知识库（本机能找到 token 和库名时默认就同步；失败要报错）")
     ap.add_argument("--no-yuque", action="store_true", help="这次不推语雀（本机有 token 也跳过）")
-    ap.add_argument("--yuque-repo", default=None, help="语雀知识库 namespace（默认 自媒体相关库）")
+    ap.add_argument("--yuque-repo", default=None,
+                    help="语雀知识库 namespace <登录名>/<库slug>（默认读本机 config/yuque_repo.txt）")
     ap.add_argument("--yuque-token-file", default=None, help="语雀 token 文件路径（默认自动找）")
     args = ap.parse_args()
 
-    if args.yuque_repo:
-        YUQUE_REPO = args.yuque_repo
+    YUQUE_REPO = resolve_yuque_repo(args.yuque_repo)
 
     root = Path(args.project).resolve()
     if not root.is_dir():
@@ -663,7 +691,8 @@ def main() -> int:
     print(f"  verify 历史 {facts['runs']} 轮" + (f"，从没真跑过：{'、'.join(facts['never'])}" if facts["never"] else ""))
     if not args.no_ledger:
         print("  " + append_ledger(facts))
-    if args.yuque or (not args.no_yuque and looks_ready_for_yuque(args.yuque_token_file)):
+    if args.yuque or (not args.no_yuque and YUQUE_REPO
+                      and looks_ready_for_yuque(args.yuque_token_file)):
         facts["token_file"] = args.yuque_token_file
         try:
             for m in sync_yuque(facts, md, with_ledger=not args.no_ledger):
