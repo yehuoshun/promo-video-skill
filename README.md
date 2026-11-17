@@ -37,6 +37,7 @@ scripts-win/           Windows 可跑的脚本（.cmd 包装 + .ps1 + .py）
   gen_music.py          按 timing.json 的 BPM 生成占位配乐（四段结构 + 落拍重音）
   gen_sfx.py            生成 whoosh / click / riser 等音效，落点来自 timing.json
   gen_vo.py             逐句合成旁白、掐静音、RMS 归一化、时长写回 voiceLines
+  say.ps1/.cmd          离线配音：Windows 自带 SAPI 念中文存 WAV（-Text/-File/-Out/-Voice/-Rate/-Volume/-List，默认 out\voice.wav，念完接 check_audio.py）
   check_timing.py       分镜结构、时长底线、版式重复、layout 是否真注册过、时间轴连续性
   check_assets.py       素材宽度、比例、重名、中文文件名、疑似小图放大
   check_stills.py       静帧体检：相邻截图差值，抓「时间轴在走、画面不动」
