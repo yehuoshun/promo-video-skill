@@ -388,12 +388,14 @@ def append_ledger(facts: dict) -> str:
         return "账本已有今天这条，跳过"
     if not ledger.is_file():
         ledger.parent.mkdir(parents=True, exist_ok=True)
-        ledger.write_text(
+        header = (
             "# 错误清单（append-only）\n\n"
             "每次交付后由 `scripts-win\\retro.cmd` 追加一行；「根因」「已加的闸门」由人答完三问再补。\n"
-            "只增不改——这条文件的价值在于「同一个坑第二次出现时能被看见」。\n\n",
-            encoding="utf-8",
+            "只增不改——这条文件的价值在于「同一个坑第二次出现时能被看见」。\n\n"
         )
+        # newline="\n"：文本模式默认会把 \n 换成本机 os.linesep，账本进 git 后满屏 CRLF 噪音
+        with ledger.open("w", encoding="utf-8", newline="\n") as fh:
+            fh.write(header)
     f = facts["first"] or {}
     bits = []
     if facts.get("duration"):
