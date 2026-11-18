@@ -63,7 +63,11 @@
   发布物料.md      三平台文案（check_publish --write 生成，别手改）
   复盘.md          交付后复盘（retro.cmd 生成）
   out/             静帧、对比图、成片（不进 git）
+  # 长期留档不放仓库，落工作区 data/promo-video-skill/<片子标题>/
+  #   （成片副本、静帧、sheet.jpg、封面、分析台账 <片子标题>.md）
 ```
+
+**留档规则**：成片、静帧、`sheet.jpg`、封面、分析台账一律落工作区 `data/promo-video-skill/<片子标题>/`，不进任何 git 仓库——公开仓库不放大二进制，分析台账里迟早要写播放量/评论/涨粉。`retro -Snapshot` 默认拷过去（见 `docs/复盘抗删方案.md`）。
 
 ## 工程与命令
 
