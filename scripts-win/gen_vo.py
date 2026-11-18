@@ -228,6 +228,11 @@ def main() -> int:
     tpath = Path(args.timing) if args.timing else proj / "timing.json"
     if not tpath.exists():
         raise SystemExit(f"找不到 {tpath}")
+    # 只给了 --timing 时，-Project 还停在默认值 "template"，proj 会指到模板目录，
+    # wav 全写进 template/public/vo（2026-11-18 踩过：成片工程里一句都没生成）。
+    # 所以给了 --timing 且没显式指定 -Project 时，以 timing.json 所在目录为准。
+    if args.timing and args.project == "template":
+        proj = tpath.resolve().parent
     timing = json.loads(tpath.read_text(encoding="utf-8"))
     fps = timing.get("fps", 30)
 
