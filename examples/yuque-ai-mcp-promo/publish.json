@@ -6,31 +6,45 @@
     "写死的数字会和 timing.json 对账，对不上就是 ERROR。",
     "三个平台的键名固定为 bilibili / douyin / xiaohongshu，别改。"
   ],
-  "repo": "",
+  "repo": "https://github.com/yehuoshun/yuque-ai-mcp",
   "platforms": {
     "bilibili": {
-      "video": "",
-      "cover": "",
-      "title": "",
-      "body": [],
-      "tags": [],
+      "video": "宣传片 1080p60.mp4",
+      "cover": "封面 16x9.png",
+      "title": "yuque-ai-mcp：65 个工具，让 AI 直接读写你的语雀",
+      "body": [
+        "官方 yuque-mcp-server 是 19 个工具，这里是 65 个，按语雀的 13 个域排开：文档、知识库、目录、搜索、小记、画板、团队、回收站、上传、统计……",
+        "45 个走 OpenAPI（API Token），20 个走 Web API（Cookie + x-csrf-token）——团队、回收站、上传、统计、版本 Diff、跨库复制这些官方没有的，都在这 20 个里。",
+        "只支持 stdio？这里两种都行：stdio 给 Claude Desktop / Cursor，HTTP SSE 给浏览器和脚本，端口 3099。MIT 许可，TypeScript 写的，运行时依赖只有官方那个 MCP SDK。",
+        "仓库：https://github.com/yehuoshun/yuque-ai-mcp"
+      ],
+      "tags": ["MCP", "语雀", "AI", "TypeScript", "开源"],
       "note": "分区 科技 → 计算机技术；转载声明填「自制」"
     },
     "douyin": {
-      "video": "",
-      "cover": "",
-      "title": "",
-      "body": [],
-      "tags": [],
-      "note": ""
+      "video": "宣传片 1080p60 竖版.mp4",
+      "cover": "封面 9x16.png",
+      "title": "AI 读不懂你的语雀？给它接 65 个工具",
+      "body": [
+        "官方的 MCP Server 只有 19 个工具，文档、知识库之外的活都得自己写脚本。",
+        "yuque-ai-mcp 把语雀的 13 个域做成 65 个工具：搜索、读文档、改目录、画板、小记、回收站、上传、统计，版本 Diff 和跨库复制也有。",
+        "45 个走 API Token，20 个走浏览器会话，stdio 和 HTTP SSE 都能接。开源 MIT，仓库在评论区。"
+      ],
+      "tags": ["MCP", "语雀", "AI工具", "开源", "效率工具"],
+      "note": "竖版 9:16；简介别放链接，链接放评论区第一条"
     },
     "xiaohongshu": {
-      "video": "",
-      "cover": "",
-      "title": "",
-      "body": [],
-      "tags": [],
-      "note": ""
+      "video": "宣传片 1080p60 竖版.mp4",
+      "cover": "封面 3x4.png",
+      "title": "把语雀接给 AI：65 个工具",
+      "body": [
+        "以前让 AI 读语雀，只能复制粘贴。现在接一个 MCP Server 就行。",
+        "65 个工具按域排开：文档 15、知识库 8、目录 3、搜索 3、小记 4、画板 3、团队 3、回收站 3、上传 1、统计 4，还有 7 个「我的」和 8 个网页文档。",
+        "团队、回收站、上传、统计、版本 Diff、跨库复制——官方 19 个工具里没有的，这里都有。",
+        "开源 MIT，TypeScript，stdio + HTTP SSE 两种接法。"
+      ],
+      "tags": ["MCP", "语雀", "AI", "开源", "知识管理"],
+      "note": "3:4 封面；正文里的数字与成片口播保持一致"
     }
   }
 }

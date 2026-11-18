@@ -41,6 +41,10 @@ export type OnscreenMap = {
   stamp?: string;
   /** 数据卡片 */
   stats?: StatSlot[];
+  /** 逐条列表（左边一个勾/点），例如「官方 19 个里没有的」六条 */
+  items?: string[];
+  /** 两列对照（左名右值），例如 13 个域与各自的工具数 */
+  pairs?: Array<{ k: string; v: string; note?: string }>;
 };
 
 export type Scene = {
@@ -82,6 +86,11 @@ export type Timing = {
     transition?: number;
   };
   beats?: { bpm: number; offset: number };
+  /**
+   * 封面专用文案（三张封面与片子同一套文字来源，不在 Cover.tsx 里另写一份）。
+   * 封面不是场景，没有 onscreen 槽位，所以在这里单开一小节。
+   */
+  cover?: { topRight?: string; lines?: string[] };
   audio?: AudioCfg;
   /**
    * 旁白逐句表，由 scripts-win/gen_vo.py 生成——不要手改 at/dur，

@@ -1,23 +1,38 @@
 /**
- * 配色只改这里。三色基调，别加第四种强调色——片子会脏。
+ * 配色只改这里。本片走「语雀绿卡片流」：浅色纸底 + 语雀绿 #00b96b。
  *
- * 注意：`public/lottie/demo-badge.json` 里的颜色是这里几个值的 0~1 浮点拷贝
- * （accent → `[0.5569, 0.9412, 0.7843, 1]`、bg → `[0.0275, 0.0353, 0.051, 1]`），
- * JSON 里存不了 hex，也没法 import 这个文件。改这里的色值要同步那份 JSON，
- * 否则样板间第 7 段（Lottie）会和画面其余部分不同调。
+ * 两档绿：`accent` 只给大字号/色块/描边用（浅底上细字会糊），
+ * 正文里的强调色一律用 `accentInk`（更深的绿），保证对比度够。
+ * 别加第四种强调色——片子会脏。
  */
 export const theme = {
-  bg: "#07090d",
-  bgDeep: "#04060a",
-  ink: "#f2f4f7",
-  inkSoft: "rgba(242,244,247,0.62)",
-  inkFaint: "rgba(242,244,247,0.42)",
-  accent: "#8ef0c8",
-  accentSoft: "rgba(142,240,200,0.16)",
-  blue: "rgba(90,140,255,0.14)",
-  line: "rgba(255,255,255,0.10)",
-  card: "rgba(255,255,255,0.045)",
+  /** 纸底 */
+  bg: "#f5f8f6",
+  /** 纯白卡片 */
+  bgCard: "#ffffff",
+  /** 旧场景（Showcase/EffectsLab）里叫 card，语义同 bgCard；保留别名免得改两处 */
+  card: "#ffffff",
+  /** 更深一点的底，用于分区 */
+  bgDeep: "#eaf1ed",
+  ink: "#1d2129",
+  inkSoft: "rgba(29,33,41,0.64)",
+  inkFaint: "rgba(29,33,41,0.40)",
+  /** 语雀绿：只给大字、色块、描边 */
+  accent: "#00b96b",
+  /** 深绿：正文强调、小字 */
+  accentInk: "#00875a",
+  accentSoft: "rgba(0,185,107,0.10)",
+  /** 官方数字那一侧的灰：19 个要用「弱」的颜色，别用红色骂人 */
+  muted: "#8a949e",
+  mutedSoft: "rgba(138,148,158,0.14)",
+  line: "rgba(29,33,41,0.10)",
+  lineStrong: "rgba(29,33,41,0.18)",
+  shadow: "0 24px 64px rgba(29,33,41,0.10), 0 2px 8px rgba(29,33,41,0.06)",
   font:
     '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Source Han Sans SC", sans-serif',
   mono: '"Cascadia Mono", "Consolas", ui-monospace, monospace',
 } as const;
+
+/** 横竖两个版式的基准画布尺寸（竖版重排版式，不裁切横版） */
+export const VW = 1080;
+export const VH = 1920;

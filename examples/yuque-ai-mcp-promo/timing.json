@@ -1,9 +1,9 @@
 {
-  "fps": 30,
+  "fps": 60,
   "width": 1920,
   "height": 1080,
-  "duration": 15,
-  "title": "promo-video-skill · 15 秒 demo",
+  "duration": 53.4,
+  "title": "yuque-ai-mcp 宣传片 · 语雀绿卡片流（横竖双版）",
   "facts": {
     "gates": 11
   },
@@ -17,33 +17,51 @@
   },
   "beats": {
     "bpm": 100,
-    "offset": 0.1
+    "offset": 0.0
+  },
+  "cover": {
+    "topRight": "MCP SERVER · 65 TOOLS",
+    "lines": [
+      "官方 19 个工具",
+      "这里 65 个"
+    ]
   },
   "audio": {
     "bgm": "bgm.wav",
-    "volume": 0.5,
-    "fadeIn": 0.2,
-    "fadeOut": 0.9,
+    "volume": 0.42,
+    "fadeIn": 0.3,
+    "fadeOut": 1.0,
+    "duck": 8,
     "sfx": [
       {
-        "at": 0.1,
+        "at": 0.0,
         "file": "sfx/riser.wav",
-        "volume": 0.35
+        "volume": 0.32
       },
       {
-        "at": 4.3,
+        "at": 7.2,
         "file": "sfx/whoosh.wav",
-        "volume": 0.5
+        "volume": 0.42
       },
       {
-        "at": 10.3,
-        "file": "sfx/whoosh.wav",
-        "volume": 0.5
-      },
-      {
-        "at": 13.3,
+        "at": 14.4,
         "file": "sfx/click.wav",
-        "volume": 0.45
+        "volume": 0.4
+      },
+      {
+        "at": 25.2,
+        "file": "sfx/whoosh.wav",
+        "volume": 0.4
+      },
+      {
+        "at": 34.2,
+        "file": "sfx/click.wav",
+        "volume": 0.4
+      },
+      {
+        "at": 43.8,
+        "file": "sfx/whoosh.wav",
+        "volume": 0.42
       }
     ]
   },
@@ -51,100 +69,271 @@
     {
       "id": "hook-01",
       "kind": "hook",
-      "layout": "big-type",
+      "layout": "hook-doc",
       "start": 0.0,
-      "end": 4.3,
+      "end": 7.2,
       "onscreen": {
-        "kicker": "promo-video-skill",
+        "kicker": "yuque-ai-mcp",
         "lines": [
-          "把流程写成",
-          "**能执行**的规范。"
+          "文档在**语雀**里，",
+          "AI 在另一个窗口。"
         ],
-        "sub": "不是提示词，是带秒数、带配额、带闸门的施工图。"
+        "sub": "复制、粘贴、再复制 —— 一次只能搬一篇。"
       },
-      "voice": "流程不该只在脑子里。",
+      "voice": "你的知识都在语雀里，AI 却看不见。|复制、粘贴、再复制。",
       "beats": [
-        0.1,
-        0.7,
-        1.3,
-        1.9,
-        2.5,
-        3.1,
-        3.7,
-        4.3
+        0.0,
+        0.6,
+        1.2,
+        1.8,
+        2.4,
+        3.0,
+        3.6,
+        4.2,
+        4.8,
+        5.4,
+        6.0,
+        6.6,
+        7.2
       ],
-      "notes": "开场：大字逐行砸出，第二行用重色强调"
+      "notes": "浅底开场：左边一本语雀文档卡，右边一个 AI 对话窗，中间那条虚线是「手搬」的路。0.15s 就要动，别空场。"
+    },
+    {
+      "id": "contrast-01",
+      "kind": "info",
+      "layout": "contrast-num",
+      "start": 7.2,
+      "end": 14.4,
+      "onscreen": {
+        "overline": "同一个语雀，两套 MCP",
+        "stats": [
+          {
+            "label": "官方 yuque-mcp-server",
+            "value": 19,
+            "unit": "个工具",
+            "hint": "github.com/yuque"
+          },
+          {
+            "label": "yuque-ai-mcp",
+            "value": 65,
+            "unit": "个工具",
+            "hint": "13 个域"
+          }
+        ],
+        "sub": "13 个域，一个 API 端点 = 一个工具。"
+      },
+      "voice": "官方的 MCP Server，19 个工具。|这里 65 个。",
+      "beats": [
+        7.2,
+        7.8,
+        8.4,
+        9.0,
+        9.6,
+        10.2,
+        10.8,
+        11.4,
+        12.0,
+        12.6,
+        13.2,
+        13.8,
+        14.4
+      ],
+      "notes": "19 用灰色，65 用绿色；19 先落，65 后落（有一点 spring 的重量），中间一个箭头改写成「+46」。"
     },
     {
       "id": "showcase-01",
       "kind": "showcase",
-      "layout": "browser-frame",
-      "start": 4.3,
-      "end": 10.3,
+      "layout": "shot-frame",
+      "start": 14.4,
+      "end": 25.2,
       "onscreen": {
-        "url": "timing.json — 唯一的时间真相",
-        "stats": [
+        "kicker": "真实仓库截图",
+        "url": "README_CN.md · 全部 65 个工具",
+        "caption": "RAG 搜索、版本 Diff、跨库复制 —— 都在工具表里。"
+      },
+      "voice": "搜索、读文档、改目录。|每一件活，都是一个工具。|不用再写脚本搬来搬去。",
+      "beats": [
+        14.4,
+        15.0,
+        15.6,
+        16.2,
+        16.8,
+        17.4,
+        18.0,
+        18.6,
+        19.2,
+        19.8,
+        20.4,
+        21.0,
+        21.6,
+        22.2,
+        22.8,
+        23.4,
+        24.0,
+        24.6,
+        25.2
+      ],
+      "notes": "public/gh-tools-cn.png 真截图放进浏览器卡里，缓慢上推（不要把整张缩小到看不清）；下面一行 caption。"
+    },
+    {
+      "id": "domains-01",
+      "kind": "info",
+      "layout": "domains-grid",
+      "start": 25.2,
+      "end": 34.2,
+      "onscreen": {
+        "overline": "13 个域，65 个工具",
+        "title": "65 个工具，按域排开",
+        "pairs": [
           {
-            "label": "场景",
-            "value": "@scenes",
-            "unit": "个",
-            "hint": "timing.json"
+            "k": "doc",
+            "v": "15"
           },
           {
-            "label": "总时长",
-            "value": "@duration",
-            "unit": "s",
-            "hint": "@fps fps"
+            "k": "repo",
+            "v": "8"
           },
           {
-            "label": "闸门",
-            "value": "@gates",
-            "unit": "道",
-            "hint": "会 fail"
+            "k": "web_doc",
+            "v": "8"
+          },
+          {
+            "k": "mine",
+            "v": "7"
+          },
+          {
+            "k": "statistic",
+            "v": "4"
+          },
+          {
+            "k": "note",
+            "v": "4"
+          },
+          {
+            "k": "user",
+            "v": "3"
+          },
+          {
+            "k": "search",
+            "v": "3"
+          },
+          {
+            "k": "group",
+            "v": "3"
+          },
+          {
+            "k": "toc",
+            "v": "3"
+          },
+          {
+            "k": "recycle",
+            "v": "3"
+          },
+          {
+            "k": "board",
+            "v": "3"
+          },
+          {
+            "k": "upload",
+            "v": "1"
           }
         ],
-        "caption": "timing.json 一处改，画面、字幕、节拍全跟着动。"
+        "sub": "45 个走 API Token，20 个走浏览器会话（Cookie + x-csrf-token）。"
       },
-      "voice": "改一处时间，全片跟着动。",
+      "voice": "13 个域，从文档到回收站。|45 个用 Token，20 个用 Cookie。",
       "beats": [
-        4.3,
-        4.9,
-        5.5,
-        6.1,
-        6.7,
-        7.3,
-        7.9,
-        8.5,
-        9.1,
-        9.7,
-        10.3
+        25.2,
+        25.8,
+        26.4,
+        27.0,
+        27.6,
+        28.2,
+        28.8,
+        29.4,
+        30.0,
+        30.6,
+        31.2,
+        31.8,
+        32.4,
+        33.0,
+        33.6,
+        34.2
       ],
-      "notes": "浏览器框推入 + 三个数字滚动增长"
+      "notes": "13 张卡按错相逐个点亮（stagger），20 个 Cookie 的五个域用绿色描边区分（web_doc/mine/recycle/upload/web_search）——web_search 在 search 域里，卡片上标「含 Cookie 子工具」。"
+    },
+    {
+      "id": "gaps-01",
+      "kind": "info",
+      "layout": "gaps-board",
+      "start": 34.2,
+      "end": 43.8,
+      "onscreen": {
+        "overline": "官方 19 个工具里没有的",
+        "items": [
+          "团队成员与角色",
+          "回收站与彻底删除",
+          "文件上传到语雀 CDN",
+          "团队 / 成员 / 知识库统计",
+          "版本管理与 Diff",
+          "跨库复制"
+        ],
+        "sub": "README 的「与官方对比」表里，作者逐条列过。"
+      },
+      "voice": "团队、回收站、上传、统计。|版本、Diff、跨库复制。|官方没有的，这里都有。",
+      "beats": [
+        34.2,
+        34.8,
+        35.4,
+        36.0,
+        36.6,
+        37.2,
+        37.8,
+        38.4,
+        39.0,
+        39.6,
+        40.2,
+        40.8,
+        41.4,
+        42.0,
+        42.6,
+        43.2,
+        43.8
+      ],
+      "notes": "六条逐条落下，每条前面一个绿勾；右侧一栏写「官方仅有：文档 / 目录 / 搜索 / 用户」到官方核实结论后定稿。"
     },
     {
       "id": "cta-01",
       "kind": "cta",
-      "layout": "cta-full",
-      "start": 10.3,
-      "end": 15.0,
+      "layout": "cta-doc",
+      "start": 43.8,
+      "end": 53.4,
       "onscreen": {
-        "overline": "现在就能跑",
-        "title": "复制骨架，改 **timing.json**",
-        "url": "github.com/yehuoshun/promo-video-skill",
-        "tail": "MIT · 拿去改 · 记得换掉这支 demo"
+        "overline": "现在就能用",
+        "title": "把 **yuque-ai-mcp** 接进你的 AI",
+        "url": "github.com/yehuoshun/yuque-ai-mcp",
+        "tail": "MIT · TypeScript · stdio + HTTP SSE（3099）"
       },
-      "voice": "开源，拿去改。",
+      "voice": "开源，MIT 许可。|打开 Claude 或者 Cursor，接上就能读你的语雀。",
       "beats": [
-        10.3,
-        10.9,
-        11.5,
-        12.1,
-        12.7,
-        13.3,
-        13.9,
-        14.5
+        43.8,
+        44.4,
+        45.0,
+        45.6,
+        46.2,
+        46.8,
+        47.4,
+        48.0,
+        48.6,
+        49.2,
+        49.8,
+        50.4,
+        51.0,
+        51.6,
+        52.2,
+        52.8,
+        53.4
       ],
-      "notes": "网址落地，光晕呼吸，停留 4.4 秒"
+      "notes": "网址落到一张白卡上，停留 ≥4s；结尾留白，别加抖动的「点赞关注」。"
     }
   ],
   "voiceLines": [
@@ -152,31 +341,141 @@
       "id": "hook-01-1",
       "scene": "hook-01",
       "at": 0.3,
-      "dur": 2.207,
-      "text": "流程不该只在脑子里。",
+      "dur": 3.197,
+      "text": "你的知识都在语雀里，AI 却看不见。",
       "file": "vo/hook-01-1.wav",
-      "sha1": "b55990fe47ca",
-      "rate": 4.53
+      "sha1": "4a97cc130375",
+      "rate": 5.63
+    },
+    {
+      "id": "hook-01-2",
+      "scene": "hook-01",
+      "at": 4.2,
+      "dur": 2.295,
+      "text": "复制、粘贴、再复制。",
+      "file": "vo/hook-01-2.wav",
+      "sha1": "1dd67778c467",
+      "rate": 4.36
+    },
+    {
+      "id": "contrast-01-1",
+      "scene": "contrast-01",
+      "at": 7.5,
+      "dur": 2.931,
+      "text": "官方的 MCP Server，19 个工具。",
+      "file": "vo/contrast-01-1.wav",
+      "sha1": "c6f3dfabf700",
+      "rate": 7.51
+    },
+    {
+      "id": "contrast-01-2",
+      "scene": "contrast-01",
+      "at": 11.133,
+      "dur": 1.256,
+      "text": "这里 65 个。",
+      "file": "vo/contrast-01-2.wav",
+      "sha1": "7d2fe96c5525",
+      "rate": 6.37
     },
     {
       "id": "showcase-01-1",
       "scene": "showcase-01",
-      "at": 4.6,
-      "dur": 2.89,
-      "text": "改一处时间，全片跟着动。",
+      "at": 14.7,
+      "dur": 2.37,
+      "text": "搜索、读文档、改目录。",
       "file": "vo/showcase-01-1.wav",
-      "sha1": "5946a5ff1167",
-      "rate": 4.15
+      "sha1": "a8da78ad73f5",
+      "rate": 4.64
+    },
+    {
+      "id": "showcase-01-2",
+      "scene": "showcase-01",
+      "at": 17.767,
+      "dur": 2.05,
+      "text": "每一件活，都是一个工具。",
+      "file": "vo/showcase-01-2.wav",
+      "sha1": "256c3c084b7b",
+      "rate": 5.85
+    },
+    {
+      "id": "showcase-01-3",
+      "scene": "showcase-01",
+      "at": 20.517,
+      "dur": 2.074,
+      "text": "不用再写脚本搬来搬去。",
+      "file": "vo/showcase-01-3.wav",
+      "sha1": "e514b498f264",
+      "rate": 5.3
+    },
+    {
+      "id": "domains-01-1",
+      "scene": "domains-01",
+      "at": 25.5,
+      "dur": 2.527,
+      "text": "13 个域，从文档到回收站。",
+      "file": "vo/domains-01-1.wav",
+      "sha1": "80299113e9c9",
+      "rate": 5.54
+    },
+    {
+      "id": "domains-01-2",
+      "scene": "domains-01",
+      "at": 28.733,
+      "dur": 3.111,
+      "text": "45 个用 Token，20 个用 Cookie。",
+      "file": "vo/domains-01-2.wav",
+      "sha1": "344219b8703d",
+      "rate": 8.04
+    },
+    {
+      "id": "gaps-01-1",
+      "scene": "gaps-01",
+      "at": 34.5,
+      "dur": 3.024,
+      "text": "团队、回收站、上传、统计。",
+      "file": "vo/gaps-01-1.wav",
+      "sha1": "dc882449b8e9",
+      "rate": 4.3
+    },
+    {
+      "id": "gaps-01-2",
+      "scene": "gaps-01",
+      "at": 38.217,
+      "dur": 2.194,
+      "text": "版本、Diff、跨库复制。",
+      "file": "vo/gaps-01-2.wav",
+      "sha1": "d89a69e9c5ee",
+      "rate": 5.93
+    },
+    {
+      "id": "gaps-01-3",
+      "scene": "gaps-01",
+      "at": 41.117,
+      "dur": 2.078,
+      "text": "官方没有的，这里都有。",
+      "file": "vo/gaps-01-3.wav",
+      "sha1": "a03681d5bd4d",
+      "rate": 5.29
     },
     {
       "id": "cta-01-1",
       "scene": "cta-01",
-      "at": 10.6,
-      "dur": 1.931,
-      "text": "开源，拿去改。",
+      "at": 44.1,
+      "dur": 1.902,
+      "text": "开源，MIT 许可。",
       "file": "vo/cta-01-1.wav",
-      "sha1": "e1c4578c25a6",
-      "rate": 3.63
+      "sha1": "f3c3379d78c8",
+      "rate": 5.26
+    },
+    {
+      "id": "cta-01-2",
+      "scene": "cta-01",
+      "at": 46.7,
+      "dur": 4.083,
+      "text": "打开 Claude 或者 Cursor，接上就能读你的语雀。",
+      "file": "vo/cta-01-2.wav",
+      "sha1": "8ed1db8b2d6c",
+      "rate": 7.35
     }
   ]
 }

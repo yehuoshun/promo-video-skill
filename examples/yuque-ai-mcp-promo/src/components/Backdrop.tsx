@@ -14,8 +14,11 @@ type Props = {
 };
 
 /**
- * 全片通用的底：径向光 + 网格 + 暗角 + 缓慢漂移的光斑。
- * 纯 CSS + 由 frame 算出的位移，保证逐帧确定性。
+ * 全片通用的底：浅色纸面 + 右上角一团语雀绿光晕 + 极淡网格 + 纸边阴影。
+ * 纯 CSS + 由 frame 算出的位移，逐帧确定性（渲染器并行抓帧不会漂）。
+ *
+ * 和上一支（深色霓虹）的区别：这里的光是「纸被灯照亮」，不是「屏幕在发光」，
+ * 所以光晕 alpha 压得很低（0.10 上下），网格用墨色而不是白色。
  */
 export const Backdrop: React.FC<Props> = ({ accent = theme.accent, gridIn = 1, breathe = true }) => {
   const frame = useCurrentFrame();
@@ -23,45 +26,45 @@ export const Backdrop: React.FC<Props> = ({ accent = theme.accent, gridIn = 1, b
 
   const drift = Math.sin(frame / (fps * 6)) * 40;
   const pulse = breathe ? beatAt(frame, fps, BPM, BEAT_OFFSET) : 0;
-  const glow = 0.16 + pulse * 0.1;
-  const gridAlpha = 0.055 * ramp(frame, 0, 18) * gridIn;
+  const glow = 0.10 + pulse * 0.05;
+  const gridAlpha = 0.045 * ramp(frame, 0, 18) * gridIn;
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bg }}>
-      {/* 底色渐变 */}
+      {/* 底：自上而下的纸面色差，别做成纯平 */}
       <AbsoluteFill
         style={{
-          background: `linear-gradient(160deg, #0b0f15 0%, ${theme.bg} 55%, ${theme.bgDeep} 100%)`,
+          background: `linear-gradient(168deg, #ffffff 0%, ${theme.bg} 52%, ${theme.bgDeep} 100%)`,
         }}
       />
 
-      {/* 两处径向光，随拍呼吸 */}
+      {/* 两处柔光：右上语雀绿、左下更淡的同色 */}
       <AbsoluteFill
         style={{
-          background: `radial-gradient(1200px 700px at ${72 + drift / 8}% 26%, ${accent}${Math.round(
+          background: `radial-gradient(1100px 760px at ${74 + drift / 8}% 18%, ${accent}${Math.round(
             glow * 255,
           )
             .toString(16)
-            .padStart(2, "0")}, transparent 62%),
-            radial-gradient(900px 600px at ${18 - drift / 10}% 96%, ${theme.blue}, transparent 65%)`,
+            .padStart(2, "0")}, transparent 64%),
+            radial-gradient(820px 620px at ${16 - drift / 10}% 92%, rgba(0,185,107,0.05), transparent 68%)`,
         }}
       />
 
-      {/* 网格 */}
+      {/* 网格：墨色细线，用径向遮罩让它只在中间可见 */}
       <AbsoluteFill
         style={{
-          backgroundImage: `linear-gradient(to right, rgba(255,255,255,${gridAlpha}) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,${gridAlpha}) 1px, transparent 1px)`,
-          backgroundSize: "80px 80px",
-          maskImage: "radial-gradient(78% 68% at 50% 42%, #000 26%, transparent 100%)",
-          WebkitMaskImage: "radial-gradient(78% 68% at 50% 42%, #000 26%, transparent 100%)",
+          backgroundImage: `linear-gradient(to right, rgba(29,33,41,${gridAlpha}) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(29,33,41,${gridAlpha}) 1px, transparent 1px)`,
+          backgroundSize: "72px 72px",
+          maskImage: "radial-gradient(76% 66% at 50% 44%, #000 24%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(76% 66% at 50% 44%, #000 24%, transparent 100%)",
         }}
       />
 
-      {/* 暗角 */}
+      {/* 纸边：四周一圈极淡的暖灰，别用黑色暗角（浅底上加黑会脏） */}
       <AbsoluteFill
         style={{
-          background: "radial-gradient(120% 100% at 50% 50%, transparent 45%, rgba(0,0,0,0.55) 100%)",
+          background: "radial-gradient(126% 104% at 50% 50%, transparent 58%, rgba(29,33,41,0.055) 100%)",
         }}
       />
     </AbsoluteFill>
