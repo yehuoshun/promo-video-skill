@@ -22,6 +22,8 @@ export const Cover: React.FC<Props> = ({ w, h }) => {
   const on = slots(hook);
   const onC = slots(contrast);
   const onCta = slots(cta);
+  const gaps = timing.scenes.find((s) => s.kind === "info" && slots(s).items) ?? null;
+  const onGaps = gaps ? slots(gaps) : null;
 
   const portrait = h > w;
   const tall = h / w > 1.6;
@@ -30,10 +32,10 @@ export const Cover: React.FC<Props> = ({ w, h }) => {
 
   const kickerPx = (portrait ? 22 : 24) * Math.min(k, 1.3);
   const titlePx = (portrait ? (tall ? 86 : 78) : 104) * Math.min(k, 1.25);
-  const statPx = (portrait ? 116 : 132) * Math.min(k, 1.25);
+  const statPx = (portrait ? 136 : 132) * Math.min(k, 1.25);
   const urlPx = (portrait ? 26 : 28) * Math.min(k, 1.25);
-  const contrastY = portrait ? (tall ? 0.62 : 0.58) : 0.63;
-  const titleY = portrait ? (tall ? 0.19 : 0.16) : 0.20;
+  const contrastY = portrait ? (tall ? 0.40 : 0.50) : 0.63;
+  const titleY = portrait ? (tall ? 0.135 : 0.16) : 0.20;
 
   return (
     <AbsoluteFill style={{ background: theme.bg, fontFamily: theme.font, color: theme.ink }}>
@@ -105,7 +107,7 @@ export const Cover: React.FC<Props> = ({ w, h }) => {
         <div
           style={{
             marginTop: (portrait ? 0.026 : 0.032) * h,
-            fontSize: (portrait ? 30 : 36) * Math.min(k, 1.25),
+            fontSize: (portrait ? 34 : 36) * Math.min(k, 1.25),
             lineHeight: 1.5,
             color: theme.inkSoft,
           }}
@@ -148,6 +150,47 @@ export const Cover: React.FC<Props> = ({ w, h }) => {
           {timing.cover?.lines?.[1] ?? ""}
         </span>
       </div>
+
+      {/* 竖版封面：官方没有的那几条，补上中部的空 */}
+      {tall && onGaps?.items && (
+        <div style={{ position: "absolute", left: pad, top: h * 0.56, width: w - pad * 2 }}>
+          <div
+            style={{
+              fontFamily: theme.mono,
+              fontSize: kickerPx * 0.9,
+              letterSpacing: "0.12em",
+              color: theme.inkFaint,
+            }}
+          >
+            {text(onGaps.overline, "overline")}
+          </div>
+          <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 18 }}>
+            {onGaps.items.slice(0, 4).map((it, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                <span
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    background: theme.accentSoft,
+                    color: theme.accentInk,
+                    fontSize: 20,
+                    fontWeight: 800,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flex: "none",
+                  }}
+                >
+                  ✓
+                </span>
+                <span style={{ fontSize: 34, fontWeight: 600, color: theme.ink }}>{it}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 22, fontSize: 24, color: theme.inkSoft }}>{text(onGaps.sub, "sub")}</div>
+        </div>
+      )}
 
       {/* 地址 */}
       <div

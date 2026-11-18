@@ -39,7 +39,7 @@ export const CtaDoc: React.FC<{ sc: Scene; vertical?: boolean }> = ({ sc, vertic
           flexDirection: "column",
           justifyContent: "center",
           alignItems: vertical ? "stretch" : "flex-start",
-          gap: s(28, 30),
+          gap: s(28, 44),
         }}
       >
         <div
@@ -48,7 +48,7 @@ export const CtaDoc: React.FC<{ sc: Scene; vertical?: boolean }> = ({ sc, vertic
             alignItems: "center",
             gap: 12,
             opacity: over.opacity,
-            fontSize: s(22, 24),
+            fontSize: s(22, 34),
             fontWeight: 700,
             letterSpacing: "0.14em",
             color: theme.accentInk,
@@ -60,7 +60,7 @@ export const CtaDoc: React.FC<{ sc: Scene; vertical?: boolean }> = ({ sc, vertic
 
         <div
           style={{
-            fontSize: s(96, 74),
+            fontSize: s(96, 62),
             fontWeight: 800,
             letterSpacing: "-0.02em",
             lineHeight: 1.16,
@@ -109,7 +109,7 @@ export const CtaDoc: React.FC<{ sc: Scene; vertical?: boolean }> = ({ sc, vertic
           <span
             style={{
               fontFamily: theme.mono,
-              fontSize: s(32, 30),
+              fontSize: s(32, 40),
               fontWeight: 700,
               letterSpacing: "0.01em",
               whiteSpace: "nowrap",
@@ -124,7 +124,7 @@ export const CtaDoc: React.FC<{ sc: Scene; vertical?: boolean }> = ({ sc, vertic
         <div
           style={{
             fontFamily: theme.mono,
-            fontSize: s(20, 20),
+            fontSize: s(24, 30),
             color: theme.inkSoft,
             opacity: tail.opacity,
             transform: `translateY(${tail.y}px)`,

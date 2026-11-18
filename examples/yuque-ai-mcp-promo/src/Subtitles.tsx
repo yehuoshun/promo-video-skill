@@ -49,6 +49,7 @@ const Line: React.FC<{ text: string; frames: number }> = ({ text, frames }) => {
           lineHeight: 1.34,
           letterSpacing: "0.01em",
           textAlign: "center",
+          textWrap: "balance" as const,
           opacity: alpha,
           transform: `translateY(${rise}px)`,
         }}

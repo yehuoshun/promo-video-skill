@@ -42,7 +42,7 @@ export const DomainsGrid: React.FC<{ sc: Scene; vertical?: boolean }> = ({
         style={{
           width: W,
           height: H,
-          padding: `56px ${pad}px 250px`,
+          padding: vertical ? `110px ${pad}px 280px` : `56px ${pad}px 250px`,
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
@@ -142,8 +142,8 @@ export const DomainsGrid: React.FC<{ sc: Scene; vertical?: boolean }> = ({
             style={{
               marginTop: 12,
               fontFamily: theme.mono,
-              fontSize: s(18, 18),
-              color: theme.inkFaint,
+              fontSize: s(22, 24),
+              color: theme.inkSoft,
               opacity: legend.opacity,
             }}
           >
