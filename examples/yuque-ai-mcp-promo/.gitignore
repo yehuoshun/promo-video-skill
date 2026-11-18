@@ -1,0 +1,12 @@
+node_modules/
+out/
+tmp/
+*.mp4
+public/offline/**/*.png
+*.png.tmp
+.DS_Store
+Thumbs.db
+
+# 个人数据：发布链接、时刻、播放数——只留本机，永不进公开仓库
+*.local.md
+*.local.json

@@ -1,0 +1,182 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "duration": 15,
+  "title": "promo-video-skill · 15 秒 demo",
+  "facts": {
+    "gates": 11
+  },
+  "pace": {
+    "minShot": 0.65,
+    "holdShot": 1.3,
+    "cardHold": 3.5,
+    "ctaHold": 3,
+    "stagger": 0.3,
+    "transition": 0.6
+  },
+  "beats": {
+    "bpm": 100,
+    "offset": 0.1
+  },
+  "audio": {
+    "bgm": "bgm.wav",
+    "volume": 0.5,
+    "fadeIn": 0.2,
+    "fadeOut": 0.9,
+    "sfx": [
+      {
+        "at": 0.1,
+        "file": "sfx/riser.wav",
+        "volume": 0.35
+      },
+      {
+        "at": 4.3,
+        "file": "sfx/whoosh.wav",
+        "volume": 0.5
+      },
+      {
+        "at": 10.3,
+        "file": "sfx/whoosh.wav",
+        "volume": 0.5
+      },
+      {
+        "at": 13.3,
+        "file": "sfx/click.wav",
+        "volume": 0.45
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "id": "hook-01",
+      "kind": "hook",
+      "layout": "big-type",
+      "start": 0.0,
+      "end": 4.3,
+      "onscreen": {
+        "kicker": "promo-video-skill",
+        "lines": [
+          "把流程写成",
+          "**能执行**的规范。"
+        ],
+        "sub": "不是提示词，是带秒数、带配额、带闸门的施工图。"
+      },
+      "voice": "流程不该只在脑子里。",
+      "beats": [
+        0.1,
+        0.7,
+        1.3,
+        1.9,
+        2.5,
+        3.1,
+        3.7,
+        4.3
+      ],
+      "notes": "开场：大字逐行砸出，第二行用重色强调"
+    },
+    {
+      "id": "showcase-01",
+      "kind": "showcase",
+      "layout": "browser-frame",
+      "start": 4.3,
+      "end": 10.3,
+      "onscreen": {
+        "url": "timing.json — 唯一的时间真相",
+        "stats": [
+          {
+            "label": "场景",
+            "value": "@scenes",
+            "unit": "个",
+            "hint": "timing.json"
+          },
+          {
+            "label": "总时长",
+            "value": "@duration",
+            "unit": "s",
+            "hint": "@fps fps"
+          },
+          {
+            "label": "闸门",
+            "value": "@gates",
+            "unit": "道",
+            "hint": "会 fail"
+          }
+        ],
+        "caption": "timing.json 一处改，画面、字幕、节拍全跟着动。"
+      },
+      "voice": "改一处时间，全片跟着动。",
+      "beats": [
+        4.3,
+        4.9,
+        5.5,
+        6.1,
+        6.7,
+        7.3,
+        7.9,
+        8.5,
+        9.1,
+        9.7,
+        10.3
+      ],
+      "notes": "浏览器框推入 + 三个数字滚动增长"
+    },
+    {
+      "id": "cta-01",
+      "kind": "cta",
+      "layout": "cta-full",
+      "start": 10.3,
+      "end": 15.0,
+      "onscreen": {
+        "overline": "现在就能跑",
+        "title": "复制骨架，改 **timing.json**",
+        "url": "github.com/yehuoshun/promo-video-skill",
+        "tail": "MIT · 拿去改 · 记得换掉这支 demo"
+      },
+      "voice": "开源，拿去改。",
+      "beats": [
+        10.3,
+        10.9,
+        11.5,
+        12.1,
+        12.7,
+        13.3,
+        13.9,
+        14.5
+      ],
+      "notes": "网址落地，光晕呼吸，停留 4.4 秒"
+    }
+  ],
+  "voiceLines": [
+    {
+      "id": "hook-01-1",
+      "scene": "hook-01",
+      "at": 0.3,
+      "dur": 2.207,
+      "text": "流程不该只在脑子里。",
+      "file": "vo/hook-01-1.wav",
+      "sha1": "b55990fe47ca",
+      "rate": 4.53
+    },
+    {
+      "id": "showcase-01-1",
+      "scene": "showcase-01",
+      "at": 4.6,
+      "dur": 2.89,
+      "text": "改一处时间，全片跟着动。",
+      "file": "vo/showcase-01-1.wav",
+      "sha1": "5946a5ff1167",
+      "rate": 4.15
+    },
+    {
+      "id": "cta-01-1",
+      "scene": "cta-01",
+      "at": 10.6,
+      "dur": 1.931,
+      "text": "开源，拿去改。",
+      "file": "vo/cta-01-1.wav",
+      "sha1": "e1c4578c25a6",
+      "rate": 3.63
+    }
+  ]
+}
