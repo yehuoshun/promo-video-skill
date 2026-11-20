@@ -1,6 +1,7 @@
 {
   "name": "promo-video-template",
   "private": true,
+  "license": "Apache-2.0",
   "version": "0.1.0",
   "description": "宣传片 Remotion 骨架：改 timing.json 与 src/scenes 就能出片",
   "scripts": {

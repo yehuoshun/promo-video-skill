@@ -1,6 +1,7 @@
 {
   "name": "self-promo",
   "private": true,
+  "license": "Apache-2.0",
   "version": "0.1.0",
   "description": "promo-video-skill 自己的宣传片：施工图版式，横竖双版",
   "scripts": {
