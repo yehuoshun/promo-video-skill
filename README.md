@@ -407,6 +407,7 @@ npm 被 PowerShell 执行策略拦住时（见 [docs/windows-踩坑记录.md](do
 ## 授权与致谢
 
 - 本仓库自有代码 Apache License 2.0（全文见 [LICENSE](LICENSE)，版权与归属见 [NOTICE](NOTICE)）。改协议前的提交仍是 MIT，取旧版本请按当时的协议使用。
+- `examples/self-promo/` 是改协议**之前**拍的实例：成片画面与发布文案里仍写着 MIT，已发布到 B 站，不再重渲染；仓库里的源码按 Apache-2.0 使用，那份画面只当历史记录看。
 - 借鉴自 ai-promo-video-maker（MIT）。抄了结构或代码片段的地方在 `docs/借鉴清单.md` 里标了出处；照抄代码需保留原版权声明。
 - 不复制对方 `references/` 的原文，只吸收结构与判定标准，文字全部重写。对方的案例复盘和踩坑记录属于它的实战资产，抄不走。
 - Remotion 只对 3 人以内公司免费；ElevenLabs 免费套餐产物不可商用。本项目的默认路线不依赖这两者的付费能力。
