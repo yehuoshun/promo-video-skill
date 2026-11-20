@@ -1,6 +1,7 @@
 {
   "name": "yuque-ai-mcp-promo",
   "private": true,
+  "license": "Apache-2.0",
   "version": "0.1.0",
   "description": "yuque-ai-mcp 宣传片：15 秒级 demo 骨架改出来的正式片，横竖双版",
   "scripts": {
