@@ -59,7 +59,8 @@ const Note: React.FC<{ frame: number; fps: number; label: string }> = ({ frame, 
 
 /**
  * 样板间时长：行数 × 拍 + 尾巴。
- * 十行文案在第 10 拍出完，之后还要 4.4 拍才能淡干净（fadeFrom=4 + 淡出 1.4 行），
+ * 十行文案在第 10 拍出完，之后还要 5.4 拍才能淡干净（fadeFrom=4 行 + 淡出 1.4 行），
+ * 也就是「末行出生后再走 4.4 拍」——别把 4.4 当成 4+1.4 写进注释，那样改时长会少留一拍、尾段硬切。
  * 少给就会在满屏字上「啪」地断掉——那是最容易露馅的地方。
  */
 export const flipLabFrames = (beat: number, from: number, fps = 30): number =>
@@ -90,6 +91,24 @@ export const Flip: React.FC = () => {
   );
 };
 
+/**
+ * 4K 包装：跟 Root.tsx 的 Video 一样用 zoom 整体放大，布局仍按 1920×1080 写。
+ * 这一条是用来验「4K 下锚点没跑到画面外」的——在本组件内部取 useVideoConfig().height
+ * 会拿到 2160，锚点掉到画面外，而 1080 的样板间看不出来。
+ */
+const zoomed = (Inner: React.FC): React.FC => () => {
+  const { width } = useVideoConfig();
+  return (
+    <AbsoluteFill style={{ backgroundColor: theme.bg }}>
+      <div style={{ width: 1920, height: 1080, position: "relative", overflow: "hidden", zoom: width / 1920 }}>
+        <Inner />
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+export const Flip4k = zoomed(Flip);
+
 /** 慢速版：一拍 0.62s、整行一起翻（charStagger=0）、角度收到 -64 度，更像稳的口播字幕 */
 export const FlipCalm: React.FC = () => {
   const frame = useCurrentFrame();
@@ -114,3 +133,6 @@ export const FlipCalm: React.FC = () => {
     </Stage>
   );
 };
+
+/** 慢速版的 4K 包装，用法同 Flip4k */
+export const FlipCalm4k = zoomed(FlipCalm);

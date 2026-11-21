@@ -3,6 +3,7 @@ import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { clamp, easeInOutCubic, easeOutCubic } from "../lib/anim";
 import { theme } from "../lib/theme";
+import { BPM, HEIGHT } from "../lib/timing";
 
 /**
  * 它跟普通字幕的区别不在「有动画」，而在于三条同时成立：
@@ -26,7 +27,7 @@ import { theme } from "../lib/theme";
 export interface FlipCascadeProps {
   /** 每行的文案，行内 **...** 走强调色 */
   rows: string[];
-  /** 每拍秒数（卡点间隔）。30fps 下 0.34 约等于 10 帧一拍 */
+  /** 每拍秒数（卡点间隔）。默认取配乐一拍 60/BPM，传别的值要能说清为什么 */
   beat?: number;
   /** 拍内静止占比：0.45 = 拍内前 45% 不动，剩下 55% 顶上一行 */
   hold?: number;
@@ -49,6 +50,13 @@ export interface FlipCascadeProps {
   /** 文字最大宽度，用来定左右留白 */
   maxWidth?: number;
 }
+
+/**
+ * 必须显式传 beat 或用默认的「一拍 = 配乐一拍」（60 / BPM）。
+ * 别在场景里手写 0.34 —— 模板 timing.json 的 bpm 是 100（一拍 0.6s），
+ * 手写常数会让整段卡点匀速漂走，而这正是红线 4「时间只有一个来源」要防的事。
+ */
+export const BEAT_SEC = 60 / BPM;
 
 /** 拍数（可带小数）-> 已经上行了多少行。拍内是阶梯：先停（hold），再顶。 */
 export function conveyor(beatsElapsed: number, hold = 0.45): number {
@@ -78,7 +86,7 @@ export function cells(text: string): Cell[] {
 
 export const FlipCascade: React.FC<FlipCascadeProps> = ({
   rows,
-  beat = 0.34,
+  beat = BEAT_SEC,
   hold = 0.45,
   rowHeight = 132,
   anchor = 0.76,
@@ -91,12 +99,22 @@ export const FlipCascade: React.FC<FlipCascadeProps> = ({
   maxWidth = 1180,
 }) => {
   const frame = useCurrentFrame();
-  const { fps, height } = useVideoConfig();
+  const { fps } = useVideoConfig();
+
+  // 布局坐标用 timing.ts 的 HEIGHT，不是 useVideoConfig().height：
+  // Main4k 是靠 Root 的 zoom 整体放大，布局空间仍是 1920×1080。
+  // 取 videoConfig 的 height，4K 下锚点会掉到画面外，这一段直接消失（回归时曾踩过）。
+  if (rowHeight < fontSize * 1.2) {
+    throw new Error(
+      "FlipCascade: rowHeight(" + rowHeight + ") 必须 >= fontSize × 1.2(" + Math.round(fontSize * 1.2) +
+        ")，否则翻转时上下行会叠在一起——这里抛错而不是静默 clamp，免得交付片里才发现叠字",
+    );
+  }
 
   const beatFrames = Math.max(1, beat * fps);
   const flipBeats = Math.max(1e-3, flipDur / beat);
   const stagger = charStagger / beat;
-  const anchorPx = height * anchor;
+  const anchorPx = HEIGHT * anchor;
 
   // 上行传送带：只跟全局帧有关，所以所有行走同一条曲线，行距永远锁死
   const beatsElapsed = (frame - from * fps) / beatFrames;

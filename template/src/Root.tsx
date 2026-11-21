@@ -2,7 +2,7 @@ import React from "react";
 import { AbsoluteFill, Composition, Sequence, useVideoConfig } from "remotion";
 import { Cta } from "./scenes/Cta";
 import { EffectsLab, SEG_FRAMES, SEGMENTS } from "./scenes/EffectsLab";
-import { Flip, FlipCalm, flipLabFrames } from "./scenes/FlipLab";
+import { Flip, Flip4k, FlipCalm, FlipCalm4k, flipLabFrames } from "./scenes/FlipLab";
 import { Hook } from "./scenes/Hook";
 import { Showcase } from "./scenes/Showcase";
 import { Soundtrack } from "./Soundtrack";
@@ -122,6 +122,23 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={WIDTH}
         height={HEIGHT}
+      />
+      {/* 4K 参照：验锚点在 3840×2160 下没跑出画面外（组件内一律用 lib/timing 的 HEIGHT） */}
+      <Composition
+        id="Flip4k"
+        component={Flip4k}
+        durationInFrames={flipLabFrames(0.34, 0.2)}
+        fps={30}
+        width={3840}
+        height={2160}
+      />
+      <Composition
+        id="FlipCalm4k"
+        component={FlipCalm4k}
+        durationInFrames={flipLabFrames(0.62, 0.35)}
+        fps={30}
+        width={3840}
+        height={2160}
       />
     </>
   );
