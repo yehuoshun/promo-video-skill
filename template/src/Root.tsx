@@ -2,6 +2,7 @@ import React from "react";
 import { AbsoluteFill, Composition, Sequence, useVideoConfig } from "remotion";
 import { Cta } from "./scenes/Cta";
 import { EffectsLab, SEG_FRAMES, SEGMENTS } from "./scenes/EffectsLab";
+import { Flip, FlipCalm, flipLabFrames } from "./scenes/FlipLab";
 import { Hook } from "./scenes/Hook";
 import { Showcase } from "./scenes/Showcase";
 import { Soundtrack } from "./Soundtrack";
@@ -99,6 +100,25 @@ export const RemotionRoot: React.FC = () => {
         id="Effects"
         component={EffectsLab}
         durationInFrames={SEGMENTS.length * SEG_FRAMES}
+        fps={30}
+        width={WIDTH}
+        height={HEIGHT}
+      />
+      {/* 翻转瀑布流字幕样板间：两版参数各一条，跟 timing.json 无关。
+          时长从拍数算（见 FlipLab.tsx 的 flipLabFrames），不写魔数。
+          npx remotion render src/index.ts Flip out/flip.mp4 */}
+      <Composition
+        id="Flip"
+        component={Flip}
+        durationInFrames={flipLabFrames(0.34, 0.2)}
+        fps={30}
+        width={WIDTH}
+        height={HEIGHT}
+      />
+      <Composition
+        id="FlipCalm"
+        component={FlipCalm}
+        durationInFrames={flipLabFrames(0.62, 0.35)}
         fps={30}
         width={WIDTH}
         height={HEIGHT}

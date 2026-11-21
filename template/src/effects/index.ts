@@ -26,3 +26,5 @@ export { Lottie } from "./Lottie";
 export type { LottieProps } from "./Lottie";
 export { Morph } from "./Morph";
 export type { MorphProps } from "./Morph";
+export { FlipCascade, conveyor, cells } from "./FlipCascade";
+export type { FlipCascadeProps, Cell } from "./FlipCascade";
