@@ -496,9 +496,12 @@ if (-not $mp4) {
 }
 if (-not $mp4 -and (Test-Path -LiteralPath $outDir)) {
     $allMp4 = @(Get-ChildItem -LiteralPath $outDir -Filter '*.mp4' -File -ErrorAction SilentlyContinue)
-    # 样板间/调试产物一律不算成片：effects*（npm run render:effects 的样板间）、lab-*（试验）、
-    # *-check*（自检）、det-*（定帧）、repro*（复现）。一条正则，别再往下写五个 if。
-    $junk = '^(effects|lab-|det-|repro)|-check'
+    # 样板间/调试产物一律不算成片：effects*（npm run render:effects 的样板间）、
+    # flip*（npm run render:flip / render:flip-calm / render:flip-multi 的效果预览，见
+    # docs/翻转瀑布流字幕.md——它们是看效果用的几分钟短片，本来就不该对 timing.json 的时长）、
+    # lab-*（试验）、*-check*（自检）、det-*（定帧）、repro*（复现）。一条正则，别再往下写五个 if。
+    # 新加一条预览成片就要同步加进这里，否则它会被当成交付成片去比时长，判成 "差得离谱"。
+    $junk = '^(effects|flip|lab-|det-|repro)|-check'
     $keep = @($allMp4 | Where-Object { $_.Name -notmatch $junk } | Sort-Object LastWriteTime -Descending)
     if ($keep.Count -gt 0) {
         $mp4 = $keep[0].FullName
