@@ -205,9 +205,10 @@ export const FlipLine: React.FC<FlipLineProps> = ({
           const glyphFacing = Math.abs(Math.cos((glyphRot * Math.PI) / 180));
           const rotY = yaw * Math.sin(Math.PI * e);
 
-          // 卡倒过一半就把位置让给字。参考片里卡是「迅速缩没」，不留灰色薄边——
-          // 倒到 90° 才淡出的话会先变成一条灰线，看着像画面里的脏点。
-          const cardA = card * clamp(1 - (q - 0.35) / 0.45);
+          // 卡**全程实心白**，消失靠几何自己收场：rotateX 到 90° 时投影高度就是 0。
+          // 早先在 q=0.35 就开始淡（1-(q-0.35)/0.45），结果中段是一块 60% 的白
+          // 叠在黑底上 → 读成一块灰色梯形贴在行尾，像脏点。参考片里那块一直是实心白。
+          const cardA = card * clamp(1 - (q - 0.85) / 0.15);
           // 宽度跟着卡高走（不是行高）：卡是「竖白条」，宽高比固定才不至于细成一条线
           const cardH = rowHeight * cardHeightRatio;
           const cardW = cardH * cardWidthRatio * (0.86 + 0.14 * cardFacing);
@@ -263,8 +264,9 @@ export const FlipLine: React.FC<FlipLineProps> = ({
                       "perspective(" + depth + "px) rotateX(" + cardRot.toFixed(2) + "deg)" +
                       (yaw ? " rotateY(" + rotY.toFixed(2) + "deg)" : ""),
                     transformOrigin: "50% 100%",
-                    // 卡不要跟字共用亮度曲线：卡整体比字亮（实心白），暗下来才像侧光
-                    filter: "brightness(" + (0.82 + 0.18 * cardFacing).toFixed(3) + ")",
+                    // 卡不要跟字共用亮度曲线：卡整体比字亮（实心白）。
+                    // 侧光只压到 0.7，压到 0.6 以下会在中段先灰掉，读起来是脏点不是翻转。
+                    filter: "brightness(" + (0.7 + 0.3 * Math.pow(cardFacing, 3)).toFixed(3) + ")",
                   }}
                 />
               ) : null}
