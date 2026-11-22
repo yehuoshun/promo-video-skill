@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { BEAT_SEC, FlipLine } from "../effects/FlipCascade";
-import { HEIGHT, WIDTH } from "../lib/timing";
+import { BEAT_SEC, FlipLine, PHRASE_PAUSE, START_AT } from "../effects/FlipCascade";
+import { FPS, HEIGHT, WIDTH } from "../lib/timing";
 import { theme } from "../lib/theme";
 
 /**
@@ -20,16 +20,28 @@ export const ROWS_MAIN = ["不是**淡入**淡出", "是**一直**在流", "旧�
 
 const plain = (s: string) => s.replace(/\*\*/g, "");
 
+/** 第一条字幕什么时候开始（秒）。Single 和 flipFrames 共用，别各写一份。 */
+export const FROM = START_AT;
+
 /**
  * 一条字幕要播多久（帧）。按字数算自然时长再向上取整到整拍——
  * 短词不空等、长词不挤团。别在 Root.tsx 里手写帧数，换词表后必漂。
+ *
+ * `from` 是**这条字幕自己**第一个字出生的时刻：多行构图里各行起跑时间不同，
+ * 要把最晚那条的 from 传进来，否则算出来的时长会比实际短一大截。
  */
-export const flipFrames = (rows: string[], flipDur: number, charStagger: number, from = 0.15) => {
+export const flipFrames = (
+  rows: string[],
+  flipDur: number,
+  charStagger: number,
+  from = FROM,
+  tail = 1.2,
+) => {
   const sec = rows.reduce((acc, r) => {
-    const natural = (plain(r).length - 1) * charStagger + flipDur + 0.16;
+    const natural = (plain(r).length - 1) * charStagger + flipDur + PHRASE_PAUSE;
     return acc + Math.max(1, Math.ceil(natural / BEAT_SEC - 1e-6)) * BEAT_SEC;
   }, from);
-  return Math.round((sec + 1.2) * 30);
+  return Math.round((sec + tail) * FPS);
 };
 
 const GRID = "linear-gradient(" + theme.line + " 2px, transparent 2px)";
@@ -77,7 +89,7 @@ const Single: React.FC<{ flipDur: number; charStagger: number }> = ({
       anchor={0.52}
       fontSize={220}
       rowHeight={260}
-      from={0.15}
+      from={FROM}
       charStagger={charStagger}
       flipDur={flipDur}
       yaw={-10}
@@ -85,24 +97,25 @@ const Single: React.FC<{ flipDur: number; charStagger: number }> = ({
   </AbsoluteFill>
 );
 
-/** 多行 · 行距按行高 1.6 倍给，卡才不压到邻行 */
+/** 多行 · 行距 0.26 个画面高（180 → 280，≈ 行高 1.56 倍），卡才不会压到邻行 */
 const Multi: React.FC = () => (
   <AbsoluteFill>
     <Backdrop />
-    <Caption top={92} text="三行同屏：每条各走各的节拍，行距 ≥ 行高 × 1.4" />
+    {/* 说明文字别压在第一行上：row1 的基线是 anchor 0.32，字顶从 ~160 起，92 这条会被行首字盖住 */}
+    <Caption top={64} text="三行同屏：每条各走各的节拍，行距 ≥ 行高 × 1.4" />
     <FlipLine
       rows={["第一行**翻过来**", "然后就**走掉了**"]}
-      anchor={0.26}
+      anchor={0.32}
       fontSize={150}
       rowHeight={180}
-      from={0.15}
+      from={0}
       charStagger={0.08}
       flipDur={0.26}
       yaw={-10}
     />
     <FlipLine
       rows={["第二行**慢半拍**", "照样往左**流**"]}
-      anchor={0.52}
+      anchor={0.56}
       fontSize={150}
       rowHeight={180}
       from={0.35}
@@ -131,6 +144,9 @@ export const FlipCalm: React.FC = () => <Single flipDur={0.52} charStagger={0.16
 
 /** 多行构图 */
 export const FlipMulti: React.FC = () => <Multi />;
+
+/** FlipMulti 的第三行（起跑最晚那条），Root 算时长要用 */
+export const ROWS_MULTI_LAST = ["第三行**压住底**", "一起被**吃掉**"];
 
 /**
  * 4K 参照：**必须像 Root 的 Video 那样套 zoom 容器再放大**。

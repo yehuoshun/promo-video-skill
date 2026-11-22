@@ -2,13 +2,22 @@ import React from "react";
 import { AbsoluteFill, Composition, Sequence, useVideoConfig } from "remotion";
 import { Cta } from "./scenes/Cta";
 import { EffectsLab, SEG_FRAMES, SEGMENTS } from "./scenes/EffectsLab";
-import { Flip, Flip4k, FlipCalm, FlipMulti, ROWS_MAIN, flipFrames } from "./scenes/FlipLab";
+import {
+  Flip,
+  Flip4k,
+  FlipCalm,
+  FlipMulti,
+  ROWS_MAIN,
+  ROWS_MULTI_LAST,
+  flipFrames,
+} from "./scenes/FlipLab";
 import { Hook } from "./scenes/Hook";
 import { Showcase } from "./scenes/Showcase";
 import { Soundtrack } from "./Soundtrack";
 import { Subtitles } from "./Subtitles";
 import { theme } from "./lib/theme";
 import { HEIGHT, TOTAL_FRAMES, WIDTH, FPS, sceneRange, timing, type Scene } from "./lib/timing";
+import { BEAT_SEC } from "./effects/FlipCascade";
 
 /**
  * layout 名 → 组件。timing.json 里写了不存在的 layout 会直接抛错，
@@ -126,7 +135,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FlipMulti"
         component={FlipMulti}
-        durationInFrames={flipFrames(["第一行翻过来", "然后就走掉了"], 0.26, 0.08) + 60}
+        durationInFrames={flipFrames(ROWS_MULTI_LAST, 0.26, 0.08, BEAT_SEC * 2)}
         fps={30}
         width={WIDTH}
         height={HEIGHT}

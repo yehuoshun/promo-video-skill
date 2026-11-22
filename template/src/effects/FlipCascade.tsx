@@ -24,6 +24,12 @@ import { BPM, HEIGHT, WIDTH } from "../lib/timing";
 /** 一拍 = 配乐一拍。场景里别手写秒数，换 BPM 后整段卡点会匀速漂走。 */
 export const BEAT_SEC = 60 / BPM;
 
+/** 词读完停多久再进下一词（秒）。样板间算时长时也要用这个值，别各写一份 0.16。 */
+export const PHRASE_PAUSE = 0.16;
+
+/** 第一个字什么时候出生（秒）。改默认值时两处会一起变。 */
+export const START_AT = 0.2;
+
 export type Cell = { ch: string; accent: boolean };
 
 /** "不是**淡入**淡出" -> 逐字，双星之间在默认色与强调色之间取反 */
@@ -41,9 +47,15 @@ export function cells(text: string): Cell[] {
   return out;
 }
 
-/** 汉字全角、拉丁窄 —— 按字符类别给宽度，字距才不会被 ASCII 撑开 */
-const charWidth = (ch: string, fontSize: number): number =>
-  (ch.codePointAt(0) ?? 0) > 0x2e80 ? fontSize : fontSize * 0.56;
+/**
+ * 汉字全角、拉丁窄 —— 按字符类别给宽度，字距才不会被 ASCII 撑开。
+ * 半角空格单独给窄值：走拉丁那支会拿到 0.56 字号（220 下约 123px），
+ * 文案里一个空格就能把一行撑出个洞。
+ */
+const charWidth = (ch: string, fontSize: number): number => {
+  if (ch === " ") return fontSize * 0.3;
+  return (ch.codePointAt(0) ?? 0) > 0x2e80 ? fontSize : fontSize * 0.56;
+};
 
 export interface FlipLineProps {
   /** 词表。一个词播完，下一词接着从右边涌进来，整行被往左顶 */
@@ -90,7 +102,7 @@ export interface FlipLineProps {
 export const FlipLine: React.FC<FlipLineProps> = ({
   rows,
   phraseBeats,
-  phrasePause = 0.16,
+  phrasePause = PHRASE_PAUSE,
   charStagger = 0.08,
   flipDur = 0.26,
   cardHold = 0.04,
@@ -100,7 +112,7 @@ export const FlipLine: React.FC<FlipLineProps> = ({
   rowHeight = 260,
   gap = 40,
   depth = 900,
-  from = 0.2,
+  from = START_AT,
   card = 1,
   cardHeightRatio = 1.32,
   cardWidthRatio = 0.35,
@@ -112,8 +124,11 @@ export const FlipLine: React.FC<FlipLineProps> = ({
   if (rowHeight < fontSize * 1.15) {
     throw new Error(
       "FlipLine: rowHeight(" + rowHeight + ") 必须 >= fontSize × 1.15(" +
-        Math.round(fontSize * 1.15) + ")，否则翻转时白卡会压到相邻行；" +
-        "这里抛错不静默 clamp，免得只有到交付片里才发现叠字",
+        Math.round(fontSize * 1.15) + ")，否则字形会在自己的行框里溢出；" +
+        "这里抛错不静默 clamp，免得只有到交付片里才发现叠字。" +
+        "注意这条只管「字不溢出本行」——多行叠用时真正的约束是" +
+        "两条 anchor 的间距 >= rowHeight × cardHeightRatio（卡比行高出一截），" +
+        "按行高给行距会叠成一团",
     );
   }
 
