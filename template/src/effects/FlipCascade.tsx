@@ -1,219 +1,269 @@
-/*** 文字翻转瀑布流字幕（剪映里叫「翻转大字 / 快闪旋转」，B 站叫「倒鸭子」）。 */
+/**
+ * 翻转瀑布流字幕 —— 照 D:/1/Videos/11月21日(1).mp4 那条参考片做的。
+ *
+ * 参考片里读出来的机制（逐帧量过，不是猜）：
+ *
+ *   1. 只有一行字。字号占行高七成，行首行尾被画面边沿裁掉，不是多行瀑布。
+ *   2. 字一个一个出来，相邻字错开约 0.08 秒，整行像一道从左往右扫的翻转波。
+ *   3. 每字出生是一张竖着的白色实心卡，绕**底边**往前倒（rotateX 0°→90°），
+ *      投影高度按 cos 收成 0；同一个格子里，字形同时从躺平（90°）立到正对（0°）。
+ *      交接完成时白卡消失、字留下 —— 这就是「翻转」的全部。
+ *   4. 字一直往右加，整行被顶得往左走，走过左边沿就被裁掉。
+ *      这就是「瀑布流」：不是淡入淡出，是一直在流。
+ *   5. 颜色按词换：白 / 薄荷绿交替，一段一个色，不逐字跳色。
+ *
+ * 全部由 frame 算出来，纯函数。不要用 CSS animation：Remotion 并行抓帧，
+ * CSS 的时间轴不在你手里，同一帧能渲出不同结果。
+ */
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { clamp, easeInOutCubic, easeOutCubic } from "../lib/anim";
 import { theme } from "../lib/theme";
-import { BPM, HEIGHT } from "../lib/timing";
+import { BPM, HEIGHT, WIDTH } from "../lib/timing";
 
-/**
- * 它跟普通字幕的区别不在「有动画」，而在于三条同时成立：
- *
- *   1. 行是传送带上的行，不是一个个独立弹出的窗口。
- *      所有行共享同一条上行位移：新行在锚点出生，旧行被整体顶上去一行。
- *      如果每行自己往上飘，相邻行的位移曲线不同，行距会塌成一张叠字。
- *
- *   2. 位移是阶梯，不是匀速。
- *      一拍之内先静止再顶一下（hold 参数），静止那段就是读字和气口；
- *      匀速滚动会变成跑马灯，卡点感全在静止里。
- *
- *   3. 翻转绕 X 轴、原点在底边。
- *      transformOrigin 50% 100% + 父级 perspective，字像门板从地面翻起来。
- *      换成 rotateY（绕竖轴）会变成旋转木马，没有「翻」的物理感。
- *
- * 全部是「帧 -> 值」的纯函数：逐字错峰也是按字符索引算延迟，不靠 CSS animation
- * （CSS 动画在 Remotion 里逐帧截帧时不可控，同一帧会算出不同结果）。
- */
-
-export interface FlipCascadeProps {
-  /** 每行的文案，行内 **...** 走强调色 */
-  rows: string[];
-  /** 每拍秒数（卡点间隔）。默认取配乐一拍 60/BPM，传别的值要能说清为什么 */
-  beat?: number;
-  /** 拍内静止占比：0.45 = 拍内前 45% 不动，剩下 55% 顶上一行 */
-  hold?: number;
-  /** 行距（按 1920x1080 布局坐标写） */
-  rowHeight?: number;
-  /** 新行出生位置：0 顶 / 1 底 */
-  anchor?: number;
-  /** 翻转起始角度（deg）。负数 = 从画面里侧翻出来 */
-  flip?: number;
-  /** 单行翻完的时长（秒） */
-  flipDur?: number;
-  /** 逐字错峰（秒）。0 = 整行一起翻，大于 0 = 一个字一个字翻出来 */
-  charStagger?: number;
-  /** 第一行什么时候开始进（秒） */
-  from?: number;
-  /** 字号（1920 布局坐标） */
-  fontSize?: number;
-  /** 上行超过第几行开始淡出 */
-  fadeFrom?: number;
-  /** 文字最大宽度，用来定左右留白 */
-  maxWidth?: number;
-}
-
-/**
- * 必须显式传 beat 或用默认的「一拍 = 配乐一拍」（60 / BPM）。
- * 别在场景里手写 0.34 —— 模板 timing.json 的 bpm 是 100（一拍 0.6s），
- * 手写常数会让整段卡点匀速漂走，而这正是红线 4「时间只有一个来源」要防的事。
- */
+/** 一拍 = 配乐一拍。场景里别手写秒数，换 BPM 后整段卡点会匀速漂走。 */
 export const BEAT_SEC = 60 / BPM;
-
-/** 拍数（可带小数）-> 已经上行了多少行。拍内是阶梯：先停（hold），再顶。 */
-export function conveyor(beatsElapsed: number, hold = 0.45): number {
-  if (beatsElapsed <= 0) return 0;
-  const k = Math.floor(beatsElapsed);
-  const local = beatsElapsed - k;
-  const p = clamp((local - hold) / Math.max(1e-6, 1 - hold));
-  return k + easeInOutCubic(p);
-}
 
 export type Cell = { ch: string; accent: boolean };
 
-/** "不是**淡入淡出**" -> 逐字，双星之间的字走强调色 */
+/** "不是**淡入**淡出" -> 逐字，双星之间在默认色与强调色之间取反 */
 export function cells(text: string): Cell[] {
   const out: Cell[] = [];
-  let accent = false;
+  let flip = false;
   for (let i = 0; i < text.length; i++) {
     if (text[i] === "*" && text[i + 1] === "*") {
-      accent = !accent;
+      flip = !flip;
       i++;
       continue;
     }
-    out.push({ ch: text[i], accent });
+    out.push({ ch: text[i], accent: flip });
   }
   return out;
 }
 
-export const FlipCascade: React.FC<FlipCascadeProps> = ({
+/** 汉字全角、拉丁窄 —— 按字符类别给宽度，字距才不会被 ASCII 撑开 */
+const charWidth = (ch: string, fontSize: number): number =>
+  (ch.codePointAt(0) ?? 0) > 0x2e80 ? fontSize : fontSize * 0.56;
+
+export interface FlipLineProps {
+  /** 词表。一个词播完，下一词接着从右边涌进来，整行被往左顶 */
+  rows: string[];
+  /** 每个词固定占几拍。不填就按字数自动算并向上取整到整拍 */
+  phraseBeats?: number;
+  /** 词读完后停多久再进下一词（秒）。这是句读，不是节拍 */
+  phrasePause?: number;
+  /** 逐字错峰（秒） */
+  charStagger?: number;
+  /** 单个字翻完的时长（秒） */
+  flipDur?: number;
+  /** 白卡立住多久再开始倒（秒） */
+  cardHold?: number;
+  /** 翻转时顺带的一点偏航（deg）。参考片中段的字是斜的，纯 rotateX 拍不出那个角度 */
+  yaw?: number;
+  /** 行所在的纵坐标（0 顶 / 1 底，1920x1080 布局坐标） */
+  anchor?: number;
+  /** 字号 */
+  fontSize?: number;
+  /** 行高。必须 >= fontSize × 1.15，否则翻转时白卡会压到相邻行 */
+  rowHeight?: number;
+  /** 换词时的额外间隔（px） */
+  gap?: number;
+  /** 透视距离（px）。越小越「冲」，越大越平 */
+  depth?: number;
+  /** 第一个字什么时候出生（秒） */
+  from?: number;
+  /** 白卡不透明度：0 = 不出白卡，1 = 参考片那样整块实心白 */
+  card?: number;
+  /**
+   * 白卡高度占行高的倍数。
+   * 参考片实测（1080 宽裁切坐标）：卡 121×343，字形格 222×259 → 343/259 ≈ 1.32。
+   * 卡比字高三成，上下各探出一截。**这个比值别再凭感觉放大**：
+   * 放到 2 倍以上时，卡会伸进相邻那条字幕，读起来像一根白条飘在行外面。
+   */
+  cardHeightRatio?: number;
+  /** 白卡宽度占**卡高**的比例。参考片 121/343 ≈ 0.35（卡是竖条，不是方块） */
+  cardWidthRatio?: number;
+  /** 右端停靠位置（占画面宽比例） */
+  rightMargin?: number;
+}
+
+export const FlipLine: React.FC<FlipLineProps> = ({
   rows,
-  beat = BEAT_SEC,
-  hold = 0.45,
-  rowHeight = 132,
-  anchor = 0.76,
-  flip = -78,
+  phraseBeats,
+  phrasePause = 0.16,
+  charStagger = 0.08,
   flipDur = 0.26,
-  charStagger = 0.04,
+  cardHold = 0.04,
+  yaw = -10,
+  anchor = 0.58,
+  fontSize = 190,
+  rowHeight = 260,
+  gap = 40,
+  depth = 900,
   from = 0.2,
-  fontSize = 92,
-  fadeFrom = 4,
-  maxWidth = 1180,
+  card = 1,
+  cardHeightRatio = 1.32,
+  cardWidthRatio = 0.35,
+  rightMargin = 0.94,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // 布局坐标用 timing.ts 的 HEIGHT，不是 useVideoConfig().height：
-  // Main4k 是靠 Root 的 zoom 整体放大，布局空间仍是 1920×1080。
-  // 取 videoConfig 的 height，4K 下锚点会掉到画面外，这一段直接消失（回归时曾踩过）。
-  if (rowHeight < fontSize * 1.2) {
+  if (rowHeight < fontSize * 1.15) {
     throw new Error(
-      "FlipCascade: rowHeight(" + rowHeight + ") 必须 >= fontSize × 1.2(" + Math.round(fontSize * 1.2) +
-        ")，否则翻转时上下行会叠在一起——这里抛错而不是静默 clamp，免得交付片里才发现叠字",
+      "FlipLine: rowHeight(" + rowHeight + ") 必须 >= fontSize × 1.15(" +
+        Math.round(fontSize * 1.15) + ")，否则翻转时白卡会压到相邻行；" +
+        "这里抛错不静默 clamp，免得只有到交付片里才发现叠字",
     );
   }
 
-  const beatFrames = Math.max(1, beat * fps);
-  const flipBeats = Math.max(1e-3, flipDur / beat);
-  const stagger = charStagger / beat;
+  // 先拆字，再给每个词算「自然时长」并整拍：短词不空等，长词不挤。
+  const phraseCells = rows.map((text) => cells(text));
+  const phraseStart: number[] = [];
+  let beat = Math.round(from / BEAT_SEC);
+  phraseCells.forEach((cs) => {
+    phraseStart.push(beat * BEAT_SEC);
+    if (phraseBeats !== undefined) {
+      beat += phraseBeats;
+    } else {
+      const natural = (cs.length - 1) * charStagger + flipDur + phrasePause;
+      beat += Math.max(1, Math.ceil(natural / BEAT_SEC - 1e-6));
+    }
+  });
+
+  // 颜色按词交替：白 / 强调色，** ** 只在词内局部取反
+  type Born = Cell & { at: number; w: number; phrase: number };
+  const stream: Born[] = [];
+  rows.forEach((_, r) => {
+    const base = r % 2 === 1;
+    phraseCells[r].forEach((c, k) => {
+      stream.push({
+        ch: c.ch,
+        accent: c.accent ? !base : base,
+        at: phraseStart[r] + k * charStagger,
+        w: charWidth(c.ch, fontSize),
+        phrase: r,
+      });
+    });
+  });
+
+  const t = frame / fps;
+  if (t < phraseStart[0]) return <AbsoluteFill />;
+
+  // 每个字相对整行左端的偏移（换词加一个 gap）
+  const leftOf: number[] = [];
+  let acc = 0;
+  for (let i = 0; i < stream.length; i++) {
+    if (i > 0 && stream[i].phrase !== stream[i - 1].phrase) acc += gap;
+    leftOf.push(acc);
+    acc += stream[i].w;
+  }
+
+  // 整行往左挪多少 = 已出生各字的宽度之和，各字按自己的翻转进度平滑贡献。
+  // 这样每进一个字，整行是「推」出去一截，而不是一帧内跳一格。
+  let pushed = 0;
+  for (const c of stream) {
+    if (t < c.at) break;
+    pushed += c.w * easeOutCubic(clamp((t - c.at) / Math.max(1e-3, flipDur)));
+  }
+  const lineX = WIDTH * rightMargin - pushed;
+
+  // anchor 是「字底的基线」，不是行中心：卡从基线往上立，比字高两倍多
   const anchorPx = HEIGHT * anchor;
-
-  // 上行传送带：只跟全局帧有关，所以所有行走同一条曲线，行距永远锁死
-  const beatsElapsed = (frame - from * fps) / beatFrames;
-  const conveyorAt = conveyor(beatsElapsed, hold);
-
-  const mask = "linear-gradient(to bottom, transparent 2%, #000 22%, #000 96%, transparent 100%)";
+  // 两端渐隐：字是被画面边沿「吃掉」的，不是被硬切成半个
+  const mask = "linear-gradient(to right, transparent 0.5%, #000 7%, #000 93%, transparent 99.5%)";
 
   return (
-    <AbsoluteFill style={{ perspective: 1400, perspectiveOrigin: "50% " + anchor * 100 + "%" }}>
+    <AbsoluteFill>
+      {/* 只裁左右，不裁上下：白卡比字行高一大截，纵向裁掉就没了「竖条刷下来」的样子。
+          容器直接铺满整幅，字的底边钉在 anchor 上。 */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          overflow: "hidden",
-          // 顶上渐隐：旧行不是被硬切断，而是从画面上沿被吃掉
           WebkitMaskImage: mask,
           maskImage: mask,
         }}
       >
-        {rows.map((text, i) => {
-          const bornAt = i; // 第 i 行在第 i 拍出生
-          if (beatsElapsed < bornAt) return null;
+        {stream.map((c, i) => {
+          if (t < c.at) return null;
 
-          const slot = conveyorAt - bornAt; // 0 = 刚出生，1 = 被顶上一行
-          const rowQ = clamp((beatsElapsed - bornAt) / flipBeats);
-          const outQ = clamp((slot - fadeFrom) / 1.4);
-          const opacity = (1 - outQ) * clamp(rowQ * 1.6);
-          if (opacity <= 0.001) return null;
+          const q = clamp((t - c.at - cardHold) / Math.max(1e-3, flipDur));
+          const e = easeInOutCubic(q);
+          // 一次翻转 = 卡倒下去 + 字立起来，共用同一个 e：
+          //   卡 0°（立着，满高） -> 90°（躺平，投影为 0）
+          //   字 90°（躺着，一条线） -> 0°（正对镜头，完整）
+          // 末态交换位置。写反了就成「字从站着躺下去」，落定后永远看不到正脸。
+          const cardRot = 90 * e;
+          const glyphRot = 90 * (1 - e);
+          const cardFacing = Math.abs(Math.cos((cardRot * Math.PI) / 180));
+          const glyphFacing = Math.abs(Math.cos((glyphRot * Math.PI) / 180));
+          const rotY = yaw * Math.sin(Math.PI * e);
 
-          const rowCells = cells(text);
-          const rowRot = flip * (1 - easeOutCubic(rowQ));
-          const rowZ = -260 * (1 - easeOutCubic(rowQ));
+          // 卡倒过一半就把位置让给字。参考片里卡是「迅速缩没」，不留灰色薄边——
+          // 倒到 90° 才淡出的话会先变成一条灰线，看着像画面里的脏点。
+          const cardA = card * clamp(1 - (q - 0.35) / 0.45);
+          // 宽度跟着卡高走（不是行高）：卡是「竖白条」，宽高比固定才不至于细成一条线
+          const cardH = rowHeight * cardHeightRatio;
+          const cardW = cardH * cardWidthRatio * (0.86 + 0.14 * cardFacing);
+          // 参考片里卡在行上竖直居中（上下各探出约 0.16 卡高），不是挂在基线上
+          const cardSink = (cardH - rowHeight) / 2;
 
           return (
-            <div
+            <span
               key={i}
               style={{
                 position: "absolute",
-                left: 0,
-                right: 0,
-                top: anchorPx,
+                left: lineX + leftOf[i],
+                bottom: HEIGHT - anchorPx,
+                width: c.w,
                 height: rowHeight,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transform: "translateY(" + -slot * rowHeight + "px)",
-                transformStyle: "preserve-3d",
-                opacity,
-                padding: "0 " + (1920 - maxWidth) / 2 + "px",
+                textAlign: "center",
+                fontFamily: theme.font,
+                fontSize,
+                fontWeight: 800,
+                lineHeight: rowHeight + "px",
+                color: c.accent ? theme.accent : theme.ink,
+                // 字本身不透明：可见性由翻转角给出（侧对时就是一条线）。
+                // 再叠透明度会变成「淡入」，那不是参考片的做法。
               }}
             >
-              <div
+              <span
                 style={{
-                  display: "flex",
-                  alignItems: "flex-end",
-                  fontFamily: theme.font,
-                  fontSize,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  letterSpacing: "-0.01em",
-                  color: theme.ink,
-                  transformStyle: "preserve-3d",
-                  transform: "rotateX(" + rowRot + "deg) translateZ(" + rowZ + "px)",
-                  whiteSpace: "pre",
+                  display: "inline-block",
+                  // perspective() 写在 transform 里，不靠祖先的 perspective：
+                  // 中间隔一层带 mask 的裁剪层时祖先透视会失效，rotateX 退化成 2D 压扁
+                  transform:
+                    "perspective(" + depth + "px) rotateX(" + glyphRot.toFixed(2) + "deg)" +
+                    (yaw ? " rotateY(" + rotY.toFixed(2) + "deg)" : ""),
+                  transformOrigin: "50% 100%",
+                  backfaceVisibility: "hidden",
+                  filter: "brightness(" + (0.6 + 0.4 * glyphFacing).toFixed(3) + ")",
                 }}
               >
-                {rowCells.map((c, ci) => {
-                  // 逐字错峰：第 ci 个字晚 stagger*ci 拍才开始翻
-                  const q = clamp((beatsElapsed - bornAt - ci * stagger) / flipBeats);
-                  const rot = flip * (1 - easeOutCubic(q));
-                  const z = -240 * (1 - easeOutCubic(q));
-                  const lift = 10 * (1 - easeOutCubic(q));
-                  const glow = clamp(1 - q); // 刚翻起来时最亮，落定后收掉
-                  // 明暗调制：翻起来的那半程背光（暗），落定才回到全亮。
-                  // 少了这一条，字只是「压扁 + 淡入」，看上去像缩放，不像一块门板翻过来。
-                  const lit = 0.32 + 0.68 * easeOutCubic(q);
-                  return (
-                    <span
-                      key={ci}
-                      style={{
-                        display: "inline-block",
-                        transform:
-                          "rotateX(" + rot + "deg) translateZ(" + z + "px) translateY(" + lift + "px)",
-                        transformOrigin: "50% 100%",
-                        backfaceVisibility: "hidden",
-                        opacity: clamp(q * 1.4),
-                        filter: "brightness(" + lit.toFixed(3) + ")",
-                        color: c.accent ? theme.accent : theme.ink,
-                        textShadow: c.accent
-                          ? "0 0 " + (28 * glow + 8) + "px rgba(142,240,200," + (0.5 * glow + 0.08) + ")"
-                          : "none",
-                      }}
-                    >
-                      {c.ch}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
+                {c.ch === " " ? "\u00a0" : c.ch}
+              </span>
+              {cardA > 0.001 ? (
+                <span
+                  style={{
+                    position: "absolute",
+                    left: (c.w - cardW) / 2,
+                    // 卡在行上居中：底边沉到字底以下一截，顶边高过字顶一截
+                    bottom: -cardSink,
+                    width: cardW,
+                    height: cardH,
+                    background: "#ffffff",
+                    opacity: cardA,
+                    transform:
+                      "perspective(" + depth + "px) rotateX(" + cardRot.toFixed(2) + "deg)" +
+                      (yaw ? " rotateY(" + rotY.toFixed(2) + "deg)" : ""),
+                    transformOrigin: "50% 100%",
+                    // 卡不要跟字共用亮度曲线：卡整体比字亮（实心白），暗下来才像侧光
+                    filter: "brightness(" + (0.82 + 0.18 * cardFacing).toFixed(3) + ")",
+                  }}
+                />
+              ) : null}
+            </span>
           );
         })}
       </div>

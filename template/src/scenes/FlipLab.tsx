@@ -1,138 +1,135 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { FlipCascade } from "../effects/FlipCascade";
-import { FilmLook } from "../effects/FilmLook";
-import { GradientMesh } from "../effects/GradientMesh";
+import { BEAT_SEC, FlipLine } from "../effects/FlipCascade";
 import { theme } from "../lib/theme";
 
 /**
- * 翻转瀑布流字幕的样板间：两版参数并排给人看。
+ * 翻转瀑布流字幕样板间 —— 只为看效果，不参与成片。
  *
- * 这一段不走 timing.json —— 它是效果样张，不是产品片的一段，
- * 所以时长由 Root.tsx 的 composition 直接给死。
+ * 参考片里**只有一行字**，所以样板间也先按单行给（Flip / FlipCalm），
+ * 另外给一条多行构图（FlipMulti）证明它能同屏叠几行——多行时行距必须
+ * ≥ 行高 × 1.4，因为白卡比行高出一截（cardHeightRatio ≈ 1.32），
+ * 行距按行高给会叠成一团。
  *
- * rows 的节奏不是随便写的：每拍出一行，所以「行数 x beat」约等于观众能看完的时长，
- * 末尾留 2 秒让最后的行被顶走，别在满屏字时突然停住。
+ * 字号按参考片实测：字形格 222×259（1080 宽裁切坐标）≈ 一行 5 个字。
+ * 字再小就看不出白卡翻转，会读成一排小字在淡入。
  */
+/** 主行词表：参考片那种一段一段换词的流 */
+export const ROWS_MAIN = ["不是**淡入**淡出", "是**一直**在流", "旧词被**挤出去**", "新词从**右边**来"];
 
-export const ROWS = [
-  "瀑布流字幕",
-  "不是淡入淡出",
-  "是**一条一条**顶出来的",
-  "绕 X 轴翻 -78 度",
-  "原点在**底边**",
-  "一拍顶一行",
-  "旧行被新行顶走",
-  "逐字错峰 40ms",
-  "卡点全靠**静止**那段",
-  "promo-video-skill",
-];
+const plain = (s: string) => s.replace(/\*\*/g, "");
 
-const Stage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <AbsoluteFill style={{ backgroundColor: theme.bg }}>
-    <GradientMesh frame={0} fps={30} colors={["#06080c", "#102a26", "#0d1b33"]} opacity={0.9} />
+/**
+ * 一条字幕要播多久（帧）。按字数算自然时长再向上取整到整拍——
+ * 短词不空等、长词不挤团。别在 Root.tsx 里手写帧数，换词表后必漂。
+ */
+export const flipFrames = (rows: string[], flipDur: number, charStagger: number, from = 0.15) => {
+  const sec = rows.reduce((acc, r) => {
+    const natural = (plain(r).length - 1) * charStagger + flipDur + 0.16;
+    return acc + Math.max(1, Math.ceil(natural / BEAT_SEC - 1e-6)) * BEAT_SEC;
+  }, from);
+  return Math.round((sec + 1.2) * 30);
+};
+
+const GRID = "linear-gradient(" + theme.line + " 2px, transparent 2px)";
+const GRID_X = "linear-gradient(90deg, " + theme.line + " 2px, transparent 2px)";
+
+const Backdrop: React.FC = () => (
+  <AbsoluteFill style={{ background: theme.bg }}>
     <AbsoluteFill
-      style={{
-        background: "radial-gradient(ellipse at 50% 76%, rgba(142,240,200,0.10), transparent 62%)",
-      }}
+      style={{ backgroundImage: GRID + "," + GRID_X, backgroundSize: "96px 96px", opacity: 0.55 }}
     />
-    {children}
-    <FilmLook frame={0} vignette={0.58} grain={0.1} />
   </AbsoluteFill>
 );
 
-const Note: React.FC<{ frame: number; fps: number; label: string }> = ({ frame, fps, label }) => (
-  <div
-    style={{
-      position: "absolute",
-      left: 132,
-      top: 108,
-      fontFamily: theme.mono,
-      fontSize: 18,
-      letterSpacing: "0.18em",
-      color: theme.inkFaint,
-    }}
-  >
-    {label} / {fps}fps / f{String(frame).padStart(3, "0")}
-  </div>
+const Caption: React.FC<{ text: string; top: number }> = ({ text, top }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: 64,
+        top,
+        fontFamily: theme.font,
+        fontSize: 22,
+        letterSpacing: 2,
+        color: theme.inkFaint,
+        opacity: Math.min(1, Math.max(0, (frame / fps - 0.05) / 0.3)),
+      }}
+    >
+      {text}
+    </div>
+  );
+};
+
+/** 单行 · 参考片的原样 */
+const Single: React.FC<{ flipDur: number; charStagger: number }> = ({
+  flipDur,
+  charStagger,
+}) => (
+  <AbsoluteFill>
+    <Backdrop />
+    <Caption top={120} text="白卡逐字翻转 · 整行往左流 · 旧词被画面吃掉" />
+    <FlipLine
+      rows={ROWS_MAIN}
+      anchor={0.52}
+      fontSize={220}
+      rowHeight={260}
+      from={0.15}
+      charStagger={charStagger}
+      flipDur={flipDur}
+      yaw={-10}
+    />
+  </AbsoluteFill>
 );
 
-/**
- * 样板间时长：行数 × 拍 + 尾巴。
- * 十行文案在第 10 拍出完，之后还要 5.4 拍才能淡干净（fadeFrom=4 行 + 淡出 1.4 行），
- * 也就是「末行出生后再走 4.4 拍」——别把 4.4 当成 4+1.4 写进注释，那样改时长会少留一拍、尾段硬切。
- * 少给就会在满屏字上「啪」地断掉——那是最容易露馅的地方。
- */
-export const flipLabFrames = (beat: number, from: number, fps = 30): number =>
-  Math.ceil((ROWS.length + 4.4) * beat * fps + from * fps);
+/** 多行 · 行距按行高 1.6 倍给，卡才不压到邻行 */
+const Multi: React.FC = () => (
+  <AbsoluteFill>
+    <Backdrop />
+    <Caption top={92} text="三行同屏：每条各走各的节拍，行距 ≥ 行高 × 1.4" />
+    <FlipLine
+      rows={["第一行**翻过来**", "然后就**走掉了**"]}
+      anchor={0.26}
+      fontSize={150}
+      rowHeight={180}
+      from={0.15}
+      charStagger={0.08}
+      flipDur={0.26}
+      yaw={-10}
+    />
+    <FlipLine
+      rows={["第二行**慢半拍**", "照样往左**流**"]}
+      anchor={0.52}
+      fontSize={150}
+      rowHeight={180}
+      from={0.35}
+      charStagger={0.08}
+      flipDur={0.26}
+      yaw={-10}
+    />
+    <FlipLine
+      rows={["第三行**压住底**", "一起被**吃掉**"]}
+      anchor={0.78}
+      fontSize={150}
+      rowHeight={180}
+      from={0.55}
+      charStagger={0.08}
+      flipDur={0.26}
+      yaw={-10}
+    />
+  </AbsoluteFill>
+);
 
-/** 标配版：一拍 0.34s、逐字错峰、78 度从地面翻起 */
-export const Flip: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  return (
-    <Stage>
-      <Note frame={frame} fps={fps} label="FLIP CASCADE / 0.34s per beat / 40ms stagger" />
-      <FlipCascade
-        rows={ROWS}
-        beat={0.34}
-        hold={0.45}
-        rowHeight={136}
-        anchor={0.78}
-        flip={-78}
-        flipDur={0.26}
-        charStagger={0.04}
-        from={0.2}
-        fontSize={96}
-        fadeFrom={4}
-        maxWidth={1240}
-      />
-    </Stage>
-  );
-};
+/** 快档：0.26s 翻完、0.08s 错峰（参考片实测值） */
+export const Flip: React.FC = () => <Single flipDur={0.26} charStagger={0.08} />;
 
-/**
- * 4K 包装：跟 Root.tsx 的 Video 一样用 zoom 整体放大，布局仍按 1920×1080 写。
- * 这一条是用来验「4K 下锚点没跑到画面外」的——在本组件内部取 useVideoConfig().height
- * 会拿到 2160，锚点掉到画面外，而 1080 的样板间看不出来。
- */
-const zoomed = (Inner: React.FC): React.FC => () => {
-  const { width } = useVideoConfig();
-  return (
-    <AbsoluteFill style={{ backgroundColor: theme.bg }}>
-      <div style={{ width: 1920, height: 1080, position: "relative", overflow: "hidden", zoom: width / 1920 }}>
-        <Inner />
-      </div>
-    </AbsoluteFill>
-  );
-};
+/** 慢档：放慢一倍，用来看清白卡是怎么倒的 */
+export const FlipCalm: React.FC = () => <Single flipDur={0.52} charStagger={0.16} />;
 
-export const Flip4k = zoomed(Flip);
+/** 多行构图 */
+export const FlipMulti: React.FC = () => <Multi />;
 
-/** 慢速版：一拍 0.62s、整行一起翻（charStagger=0）、角度收到 -64 度，更像稳的口播字幕 */
-export const FlipCalm: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  return (
-    <Stage>
-      <Note frame={frame} fps={fps} label="FLIP CASCADE CALM / 0.62s per beat / whole-line flip" />
-      <FlipCascade
-        rows={ROWS}
-        beat={0.62}
-        hold={0.6}
-        rowHeight={150}
-        anchor={0.78}
-        flip={-64}
-        flipDur={0.36}
-        charStagger={0}
-        from={0.35}
-        fontSize={104}
-        fadeFrom={3.4}
-        maxWidth={1240}
-      />
-    </Stage>
-  );
-};
-
-/** 慢速版的 4K 包装，用法同 Flip4k */
-export const FlipCalm4k = zoomed(FlipCalm);
+/** 4K 参照：组件只用 lib/timing 的 WIDTH/HEIGHT 布点，不按画面实际宽度算 */
+export const Flip4k: React.FC = () => <Single flipDur={0.26} charStagger={0.08} />;
