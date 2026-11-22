@@ -150,21 +150,26 @@ export const FlipLine: React.FC<FlipLineProps> = ({
   const t = frame / fps;
   if (t < phraseStart[0]) return <AbsoluteFill />;
 
-  // 每个字相对整行左端的偏移（换词加一个 gap）
+  // 每个字「占多宽的位」：本字宽 + 换词时的 gap。位移和偏移必须用同一个量，
+  // 否则 gap 只加在偏移上、不加在位移里，每换一次词整行就往右偏一格，越换越跑偏。
+  const advance: number[] = stream.map((c, i) =>
+    c.w + (i > 0 && c.phrase !== stream[i - 1].phrase ? gap : 0),
+  );
+
+  // 每个字相对整行左端的偏移
   const leftOf: number[] = [];
   let acc = 0;
   for (let i = 0; i < stream.length; i++) {
-    if (i > 0 && stream[i].phrase !== stream[i - 1].phrase) acc += gap;
     leftOf.push(acc);
-    acc += stream[i].w;
+    acc += advance[i];
   }
 
-  // 整行往左挪多少 = 已出生各字的宽度之和，各字按自己的翻转进度平滑贡献。
+  // 整行往左挪多少 = 已出生各字的占位之和，各字按自己的翻转进度平滑贡献。
   // 这样每进一个字，整行是「推」出去一截，而不是一帧内跳一格。
   let pushed = 0;
-  for (const c of stream) {
-    if (t < c.at) break;
-    pushed += c.w * easeOutCubic(clamp((t - c.at) / Math.max(1e-3, flipDur)));
+  for (let i = 0; i < stream.length; i++) {
+    if (t < stream[i].at) break;
+    pushed += advance[i] * easeOutCubic(clamp((t - stream[i].at) / Math.max(1e-3, flipDur)));
   }
   const lineX = WIDTH * rightMargin - pushed;
 
