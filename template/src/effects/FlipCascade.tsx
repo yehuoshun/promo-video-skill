@@ -148,12 +148,17 @@ export const FlipLine: React.FC<FlipLineProps> = ({
   });
 
   const t = frame / fps;
-  if (t < phraseStart[0]) return <AbsoluteFill />;
+  // 空词表要显式挡住：phraseStart[0] 会是 undefined，"`t < undefined`" 恒为 false，
+  // 于是不报错、也不渲染任何字，只在成片里留一段空白——查起来很难。
+  if (stream.length === 0 || t < phraseStart[0]) return <AbsoluteFill />;
 
-  // 每个字「占多宽的位」：本字宽 + 换词时的 gap。位移和偏移必须用同一个量，
-  // 否则 gap 只加在偏移上、不加在位移里，每换一次词整行就往右偏一格，越换越跑偏。
+  // 每个字「占多宽的位」：本字宽 + 换词时跟在**本词末字**后面的 gap。
+  // 位移和偏移必须用同一份 advance，否则每换一次词整行就往右偏一格，越换越跑偏。
+  // 方向别搞反：gap 要算在上一词末字身上（i+1 是新词首字），
+  // 算在新词首字上时 leftOf 的前缀和会把它落到该字**后面** ——
+  // 表现为换词处两字贴死、词内反而开一个 40px 的天窗（2026-11-22 复核抓出）。
   const advance: number[] = stream.map((c, i) =>
-    c.w + (i > 0 && c.phrase !== stream[i - 1].phrase ? gap : 0),
+    c.w + (i + 1 < stream.length && stream[i + 1].phrase !== c.phrase ? gap : 0),
   );
 
   // 每个字相对整行左端的偏移
@@ -168,12 +173,15 @@ export const FlipLine: React.FC<FlipLineProps> = ({
   // 这样每进一个字，整行是「推」出去一截，而不是一帧内跳一格。
   let pushed = 0;
   for (let i = 0; i < stream.length; i++) {
-    if (t < stream[i].at) break;
+    // 用 continue 而不是 break：显式传了偏小的 phraseBeats 时 at 不再单调递增，
+    // break 会漏掉排在后面却已经出生的字，整行永久右偏且不收敛。
+    if (t < stream[i].at) continue;
     pushed += advance[i] * easeOutCubic(clamp((t - stream[i].at) / Math.max(1e-3, flipDur)));
   }
   const lineX = WIDTH * rightMargin - pushed;
 
-  // anchor 是「字底的基线」，不是行中心：卡从基线往上立，比字高两倍多
+  // anchor 是「字底的基线」，不是行中心：卡在行框上竖直居中，上下各探出
+  // (cardH - rowHeight) / 2 ≈ 0.16 行高（= 0.12 卡高）
   const anchorPx = HEIGHT * anchor;
   // 两端渐隐：字是被画面边沿「吃掉」的，不是被硬切成半个
   const mask = "linear-gradient(to right, transparent 0.5%, #000 7%, #000 93%, transparent 99.5%)";
