@@ -1,8 +1,9 @@
 /**
- * effect kit：八个「帧 → 画面」的组件。
+ * effect kit：「帧 → 画面」的组件集。
  *
  * 共同约定：
- *   1. 每个组件都接收 `frame`（场景内局部帧）和 `fps`，内部不读 useCurrentFrame，
+ *   例外：FlipCascade / FlipLine 是自己读 useCurrentFrame 的（要按 fps 算 dt），
+ *   其余组件都接收 `frame`（场景内局部帧）和 `fps`，内部不读 useCurrentFrame，
  *      这样既能嵌进 Sequence，也能在 Lab 里并排比较；
  *   2. 不引入会自己跑的动画库——所有变化都能由 frame 精确算出；
  *   3. 颜色只从 lib/theme 取，别在组件里写死色值；
@@ -26,5 +27,5 @@ export { Lottie } from "./Lottie";
 export type { LottieProps } from "./Lottie";
 export { Morph } from "./Morph";
 export type { MorphProps } from "./Morph";
-export { FlipCascade, conveyor, cells } from "./FlipCascade";
-export type { FlipCascadeProps, Cell } from "./FlipCascade";
+export { FlipLine, cells, BEAT_SEC } from "./FlipCascade";
+export type { FlipLineProps, Cell } from "./FlipCascade";

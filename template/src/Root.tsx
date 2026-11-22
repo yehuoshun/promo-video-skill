@@ -2,13 +2,22 @@ import React from "react";
 import { AbsoluteFill, Composition, Sequence, useVideoConfig } from "remotion";
 import { Cta } from "./scenes/Cta";
 import { EffectsLab, SEG_FRAMES, SEGMENTS } from "./scenes/EffectsLab";
-import { Flip, Flip4k, FlipCalm, FlipCalm4k, flipLabFrames } from "./scenes/FlipLab";
+import {
+  Flip,
+  Flip4k,
+  FlipCalm,
+  FlipMulti,
+  ROWS_MAIN,
+  ROWS_MULTI_LAST,
+  flipFrames,
+} from "./scenes/FlipLab";
 import { Hook } from "./scenes/Hook";
 import { Showcase } from "./scenes/Showcase";
 import { Soundtrack } from "./Soundtrack";
 import { Subtitles } from "./Subtitles";
 import { theme } from "./lib/theme";
 import { HEIGHT, TOTAL_FRAMES, WIDTH, FPS, sceneRange, timing, type Scene } from "./lib/timing";
+import { BEAT_SEC } from "./effects/FlipCascade";
 
 /**
  * layout 名 → 组件。timing.json 里写了不存在的 layout 会直接抛错，
@@ -104,13 +113,13 @@ export const RemotionRoot: React.FC = () => {
         width={WIDTH}
         height={HEIGHT}
       />
-      {/* 翻转瀑布流字幕样板间：两版参数各一条，跟 timing.json 无关。
-          时长从拍数算（见 FlipLab.tsx 的 flipLabFrames），不写魔数。
+      {/* 翻转瀑布流字幕样板间：单行快档 / 慢档 / 多行，跟 timing.json 无关。
+          时长从词表算（见 FlipLab.tsx 的 flipFrames），不写魔数——换词表后自动跟着变。
           npx remotion render src/index.ts Flip out/flip.mp4 */}
       <Composition
         id="Flip"
         component={Flip}
-        durationInFrames={flipLabFrames(0.34, 0.2)}
+        durationInFrames={flipFrames(ROWS_MAIN, 0.26, 0.08)}
         fps={30}
         width={WIDTH}
         height={HEIGHT}
@@ -118,7 +127,15 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="FlipCalm"
         component={FlipCalm}
-        durationInFrames={flipLabFrames(0.62, 0.35)}
+        durationInFrames={flipFrames(ROWS_MAIN, 0.52, 0.16)}
+        fps={30}
+        width={WIDTH}
+        height={HEIGHT}
+      />
+      <Composition
+        id="FlipMulti"
+        component={FlipMulti}
+        durationInFrames={flipFrames(ROWS_MULTI_LAST, 0.26, 0.08, BEAT_SEC * 2)}
         fps={30}
         width={WIDTH}
         height={HEIGHT}
@@ -127,15 +144,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="Flip4k"
         component={Flip4k}
-        durationInFrames={flipLabFrames(0.34, 0.2)}
-        fps={30}
-        width={3840}
-        height={2160}
-      />
-      <Composition
-        id="FlipCalm4k"
-        component={FlipCalm4k}
-        durationInFrames={flipLabFrames(0.62, 0.35)}
+        durationInFrames={flipFrames(ROWS_MAIN, 0.26, 0.08)}
         fps={30}
         width={3840}
         height={2160}
