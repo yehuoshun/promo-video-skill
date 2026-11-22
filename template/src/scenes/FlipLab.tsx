@@ -1,6 +1,7 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { BEAT_SEC, FlipLine } from "../effects/FlipCascade";
+import { HEIGHT, WIDTH } from "../lib/timing";
 import { theme } from "../lib/theme";
 
 /**
@@ -131,5 +132,20 @@ export const FlipCalm: React.FC = () => <Single flipDur={0.52} charStagger={0.16
 /** 多行构图 */
 export const FlipMulti: React.FC = () => <Multi />;
 
-/** 4K 参照：组件只用 lib/timing 的 WIDTH/HEIGHT 布点，不按画面实际宽度算 */
-export const Flip4k: React.FC = () => <Single flipDur={0.26} charStagger={0.08} />;
+/**
+ * 4K 参照：**必须像 Root 的 Video 那样套 zoom 容器再放大**。
+ * 直接拿 3840×2160 渲染的话，组件的布局坐标还是 1920×1080，
+ * 而 AbsoluteFill 变成了 2160 高，于是 anchor/bottom 全部按 2160 算 —
+ * 字幕会掉到画面 0.78 处、字号相对只剩一半（2026-11-22 实测：0.655~0.781，应为 0.52）。
+ */
+export const Flip4k: React.FC = () => {
+  const { width } = useVideoConfig();
+  const zoom = width / WIDTH;
+  return (
+    <AbsoluteFill style={{ background: theme.bg }}>
+      <div style={{ width: WIDTH, height: HEIGHT, position: "relative", overflow: "hidden", zoom }}>
+        <Single flipDur={0.26} charStagger={0.08} />
+      </div>
+    </AbsoluteFill>
+  );
+};
