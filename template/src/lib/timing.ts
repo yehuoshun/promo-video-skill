@@ -88,6 +88,8 @@ export type Timing = {
   height: number;
   duration: number;
   title?: string;
+  /** DeepSeek 场景质量合同版本；检查脚本只接受 version=1 */
+  qualityContract?: { version: 1; owner?: string };
   /**
    * 写不进时间轴的片子级事实，供画面上的 @token 取用。
    * gates = 交付体检的闸门数，改了 scripts-win/verify.ps1 的步数记得同步这里。
