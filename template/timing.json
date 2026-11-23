@@ -4,8 +4,12 @@
   "height": 1080,
   "duration": 15,
   "title": "promo-video-skill · 15 秒 demo",
+  "qualityContract": {
+    "version": 1,
+    "owner": "DeepSeek"
+  },
   "facts": {
-    "gates": 11
+    "gates": 12
   },
   "pace": {
     "minShot": 0.65,
@@ -51,6 +55,10 @@
     {
       "id": "hook-01",
       "kind": "hook",
+      "purpose": "hook",
+      "claim": "先让观众意识到流程问题，再进入解决方案。",
+      "evidence": [],
+      "fallback": "如果开场素材不可用，保留纯文字问题句并缩短停留。",
       "layout": "big-type",
       "start": 0.0,
       "end": 4.3,
@@ -78,6 +86,16 @@
     {
       "id": "showcase-01",
       "kind": "showcase",
+      "purpose": "proof",
+      "claim": "时间轴是画面、字幕和节拍的共同来源。",
+      "evidence": [
+        {
+          "type": "demo",
+          "path": "template/timing.json",
+          "source": "https://github.com/yehuoshun/promo-video-skill"
+        }
+      ],
+      "fallback": "如果浏览器演示不可用，改用 timing.json 的静帧和明确文件名，不伪造运行结果。",
       "layout": "browser-frame",
       "start": 4.3,
       "end": 10.3,
@@ -124,6 +142,16 @@
     {
       "id": "cta-01",
       "kind": "cta",
+      "purpose": "cta",
+      "claim": "观众可以复制项目骨架继续修改。",
+      "evidence": [
+        {
+          "type": "demo",
+          "path": "README.md",
+          "source": "https://github.com/yehuoshun/promo-video-skill"
+        }
+      ],
+      "fallback": "如果仓库页面不可访问，只保留项目名和‘自行核实’提示，不声称已完成下载。",
       "layout": "cta-full",
       "start": 10.3,
       "end": 15.0,

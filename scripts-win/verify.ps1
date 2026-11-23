@@ -3,8 +3,8 @@
 # 为什么要有它：到 P6 为止已经有八个闸门（环境、时间轴、素材、配乐、同步、静帧、排版、成片），
 # 但它们分散在 docs 和 AGENTS 的阶段表里，靠人记住「这一步该跑哪三个」。
 # 忘一条就等于没有——所以合成一条，一条命令出结论，任一 ERROR 就 exit 1。
-# 现在串了十一道（多出编码规整、layout 注册校验并进了 check_timing、以及离线渲染素材）。
-# 第 11 道是离线渲染素材（public/offline/）：没有这个目录就 SKIP，老项目不受影响。
+# 现在串了十二道（多出编码规整、layout 注册校验并进了 check_timing、离线渲染素材、以及 DeepSeek 质量合同）。
+# 离线渲染素材没有 public/offline/ 就 SKIP，老项目不受影响；质量合同没有 qualityContract 也 SKIP。
 #
 # 用法：
 #   scripts-win\verify.cmd .                      # 体检当前目录这个项目
@@ -309,6 +309,18 @@ if (-not (Test-Path -LiteralPath $timingPath)) {
     $sw.Stop()
     $v = Verdict $p
     Report '时间轴' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
+}
+
+# ---------- 3b. DeepSeek 质量合同 ----------
+
+if (-not (Test-Path -LiteralPath $timingPath)) {
+    Report '质量合同' 'SKIP' 0 '没有 timing.json'
+} else {
+    $sw.Restart()
+    $p = Invoke-Proc $py @((Join-Path $here 'check_edit_contract.py'), $timingPath)
+    $sw.Stop()
+    $v = Verdict $p
+    Report '质量合同' $v.Status $sw.Elapsed.TotalMilliseconds (VerdictText $v $p) $v.Detail
 }
 
 # ---------- 4. 素材 ----------

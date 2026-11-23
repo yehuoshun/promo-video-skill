@@ -1,0 +1,38 @@
+{
+  "qualityContract": {"version": 1, "owner": "DeepSeek"},
+  "scenes": [
+    {
+      "id": "hook-01",
+      "purpose": "hook",
+      "claim": "先指出观众正在遇到的流程问题。",
+      "evidence": [],
+      "fallback": "没有开场素材时保留文字问题句并缩短停留。"
+    },
+    {
+      "id": "proof-01",
+      "purpose": "proof",
+      "claim": "真实演示展示时间轴如何驱动画面。",
+      "evidence": [
+        {
+          "type": "demo",
+          "path": "template/timing.json",
+          "source": "https://github.com/yehuoshun/promo-video-skill"
+        }
+      ],
+      "fallback": "演示不可用时改用带文件名的静帧，不声称运行结果。"
+    },
+    {
+      "id": "cta-01",
+      "purpose": "cta",
+      "claim": "观众可以查看仓库并继续修改。",
+      "evidence": [
+        {
+          "type": "demo",
+          "path": "README.md",
+          "source": "https://github.com/yehuoshun/promo-video-skill"
+        }
+      ],
+      "fallback": "页面不可访问时只保留项目名和自行核实提示。"
+    }
+  ]
+}

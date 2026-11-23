@@ -1,0 +1,12 @@
+{
+  "qualityContract": {"version": 1, "owner": "DeepSeek"},
+  "scenes": [
+    {
+      "id": "proof-01",
+      "purpose": "proof",
+      "claim": "提速 10 倍",
+      "evidence": [{"type": "demo", "path": "public/demo.png"}],
+      "fallback": "改成示意图"
+    }
+  ]
+}

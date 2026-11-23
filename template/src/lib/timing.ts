@@ -3,6 +3,18 @@ import raw from "../../timing.json";
 /** 场景类型，与 scripts-win/check_timing.py 的 MIN_DUR 一一对应 */
 export type Kind = "hook" | "info" | "showcase" | "montage" | "cta" | "transition";
 
+/** 场景目的。purpose 约束叙事功能，claim/evidence/fallback 约束事实和失败处理。 */
+export type Purpose = "hook" | "problem" | "solution" | "proof" | "emotion" | "cta";
+
+export type Evidence = {
+  /** 项目内真实素材路径或可复核的引用标识 */
+  path: string;
+  /** 官方页面、原帖或素材授权页；proof 必填 http(s) URL */
+  source?: string;
+  /** asset / quote / metric / demo */
+  type?: string;
+};
+
 /** 一张统计卡。value 可以是数字，也可以是 @token（见 lib/onscreen.ts） */
 export type StatSlot = {
   /** 卡片小标题，例如「场景」 */
@@ -46,6 +58,14 @@ export type OnscreenMap = {
 export type Scene = {
   id: string;
   kind: Kind;
+  /** 叙事目的；由 DeepSeek 执行协议固定为六种之一 */
+  purpose: Purpose;
+  /** 观众在这一段应相信或理解的一句话 */
+  claim: string;
+  /** 支撑 claim 的真实素材、引用或演示；proof 必须带 source URL */
+  evidence: Evidence[];
+  /** 证据缺失或不可用时的明确处理方式 */
+  fallback: string;
   /** 决定用哪个场景组件，见 src/Root.tsx 的 LAYOUTS */
   layout: string;
   start: number;
