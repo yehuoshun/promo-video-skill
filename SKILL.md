@@ -15,6 +15,7 @@ description: 做一支 45~60 秒产品宣传片（4K，Remotion + Windows 脚本
 | 走到哪 | 读哪份 |
 |---|---|
 | 开工（必读常驻） | `AGENTS.md` |
+| DeepSeek 执行任务 | `docs/DeepSeek执行规范.md` |
 | 阶段 1–2 问需求 | `references/需求问询.md` |
 | 阶段 5–6 写分镜、定时长 | `references/节奏.md` |
 | 阶段 4 找素材、截屏 | `references/素材.md` |
