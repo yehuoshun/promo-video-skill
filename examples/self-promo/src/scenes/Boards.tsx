@@ -1,8 +1,8 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { enter, ramp, spring, clamp, shake } from "../lib/anim";
-import { resolveValue, slots, stats, t } from "../lib/onscreen";
-import { C, FONT, MONO, Frame, Header, Note, Paper, Ruler, Seal, Sheet, SheetPlate, ZoomSheet } from "../lib/paper";
+import { slots, stats, t } from "../lib/onscreen";
+import { C, FONT, MONO, Paper, Ruler, Sheet, Note, ZoomSheet } from "../lib/paper";
 import { Rich } from "../lib/rich";
 import { BEAT_SEC, DURATION_SEC, TOTAL_FRAMES, timing, type Scene } from "../lib/timing";
 
@@ -32,30 +32,15 @@ const useFps = (): number => useVideoConfig().fps;
 /** 每帧都用的公共外壳：纸 + 图框 + 页眉 + 图签 */
 const Board: React.FC<{
   vertical: boolean;
-  headerRight?: string;
-  plateRows?: string[];
-  plateWidth?: number;
-  plateScale?: number;
   children: React.ReactNode;
-}> = ({ vertical, headerRight, plateRows, plateWidth, plateScale, children }) => {
+}> = ({ vertical, children }) => {
   const frame = useCurrentFrame();
   const w = vertical ? VW : HW;
   const h = vertical ? VH : HH;
-  const draw = ramp(frame, 0, 14, { from: 0.12, to: 1 });
   return (
     <AbsoluteFill style={{ fontFamily: FONT, color: C.ink }}>
       <Paper w={w} h={h} drift={frame * 0.35} />
-      <Frame w={w} h={h} draw={draw} />
-      <Header w={w} right={headerRight} scale={vertical ? 0.92 : 1} draw={draw} />
       {children}
-      <SheetPlate
-        w={w}
-        h={h}
-        scale={(vertical ? 0.78 : 1) * (plateScale ?? 1)}
-        width={plateWidth}
-        rows={plateRows}
-        draw={ramp(frame, 6, 12, { from: 0, to: 1 })}
-      />
     </AbsoluteFill>
   );
 };
@@ -75,15 +60,10 @@ export const HookBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
   const sub = enter(frame, f(1.1), "body", { fps });
   const land = shake(frame, 2, 1.6, 3);
   const sheetP = ramp(frame, f(0.25), 16);
-  const sealP = spring(frame, f(1.2), { fps, stiffness: 140, damping: 11 });
-  const rulerP = ramp(frame, f(1.9), 34);
-
-  const dur = resolveValue("@duration");
-  const frames = resolveValue("@frames");
 
   if (vertical) {
     return (
-      <Board vertical headerRight={on.tail !== undefined ? t(on.tail, "tail") : undefined}>
+      <Board vertical>
         <div style={{ position: "absolute", left: 76, top: 250, width: 928 }}>
           <div style={{ fontFamily: MONO, fontSize: 18, letterSpacing: "0.3em", color: C.inkFaint, opacity: kicker.opacity }}>
             {t(on.kicker, "kicker")}
@@ -111,14 +91,12 @@ export const HookBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
           p={sheetP}
           code="E-02 / probe.cmd"
         />
-        <Seal text={t(on.stamp, "stamp")} x={620} y={1180} scale={1.15} p={sealP} />
-        <Ruler x1={76} x2={1004} y={880} p={rulerP} label={`${dur} 秒 · ${frames} 帧`} scale={1.2} ticks={11} />
       </Board>
     );
   }
 
   return (
-    <Board vertical={false} headerRight={on.tail !== undefined ? t(on.tail, "tail") : undefined}>
+    <Board vertical={false}>
       <div
         style={{
           position: "absolute",
@@ -142,22 +120,16 @@ export const HookBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
         </div>
       </div>
 
-      <ZoomSheet
+      <Sheet
         src="exhibits/exhibit-probe-bad.png"
         x={1000}
         y={210}
-        w={880}
-        h={495}
-        // 峰值 1.5：再大就把每行开头裁掉了；锚点压在 [ERROR] 块上，只丢右端尾巴
-        scale={1 + 0.5 * ramp(frame, f(1.0), f(4.6))}
-        ax={0.03}
-        ay={0.28}
+        w={760}
         p={sheetP}
+        offsetY={Math.sin((frame / fps / 10) * Math.PI * 2) * 14}
         code="E-02 / probe.cmd 真跑"
       />
-      <Seal text={t(on.stamp, "stamp")} x={1600} y={548} scale={1.1} p={sealP} />
-      <Ruler x1={140} x2={900} y={790} p={rulerP} label={`${dur} 秒 · ${frames} 帧`} ticks={11} />
-      <Note text="E-02 / 2 ERROR" x={1000} y={770} dx={-40} dy={-28} show={ramp(frame, f(1.6), 12)} />
+      <Note text="E-02 / 2 ERROR" x={1000} y={680} dx={0} dy={0} show={ramp(frame, f(1.6), 12)} />
     </Board>
   );
 };
@@ -188,7 +160,7 @@ export const GatesBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
   const top = vertical ? 250 : 330;
 
   return (
-    <Board vertical headerRight={on.tail !== undefined ? t(on.tail, "tail") : undefined}>
+    <Board vertical>
       <div style={{ position: "absolute", left: columnX, top, width: columnW }}>
         <div style={{ fontFamily: MONO, fontSize: vertical ? 16 : 19, letterSpacing: "0.26em", color: C.inkFaint, opacity: over.opacity }}>
           {t(on.overline, "overline")}
@@ -210,6 +182,7 @@ export const GatesBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
         y={vertical ? 660 : 210}
         w={vertical ? 928 : 760}
         p={sheetP}
+        offsetY={Math.sin((frame / fps / 10) * Math.PI * 2) * 14}
         code="E-03 / verify.ps1"
       />
       {/* 光扫：红色细线沿闸门清单往下走一遍，配合 11 个拍点 */}
@@ -315,14 +288,14 @@ export const TimelineBoard: React.FC<BoardProps> = ({ sc, vertical = false }) =>
   const trackX = vertical ? 76 : 1000;
   const trackY = vertical ? 1260 : 700;
   const trackW = vertical ? 928 : 760;
-  const playhead = clamp((frame - f(2.2)) / (f(9.4) - f(2.2)));
+  const playhead = clamp((frame - f(0.3)) / (f(sc.end - sc.start - 0.6)));
   // 全片拍点数：声音轨每拍一格、字幕轨每两拍一句，都按真实 BPM 铺满
   const BEATS_TOTAL = Math.round(DURATION_SEC / BEAT_SEC);
 
   const chipShow = st.map((_, i) => ramp(frame, f(2.4) + i * f(0.4), 12));
 
   return (
-    <Board vertical headerRight={on.tail !== undefined ? t(on.tail, "tail") : undefined}>
+    <Board vertical>
       <div style={{ position: "absolute", left: vertical ? 76 : 140, top: vertical ? 250 : 300, width: vertical ? 928 : 720 }}>
         <div style={{ fontFamily: MONO, fontSize: vertical ? 16 : 19, letterSpacing: "0.26em", color: C.inkFaint, opacity: over.opacity }}>
           {t(on.overline, "overline")}
@@ -338,7 +311,15 @@ export const TimelineBoard: React.FC<BoardProps> = ({ sc, vertical = false }) =>
         </div>
       </div>
 
-      <Sheet src="exhibits/exhibit-timing.png" x={vertical ? 76 : 1000} y={vertical ? 640 : 180} w={vertical ? 928 : 780} p={sheetP} code="E-04 / timing.json" />
+      <Sheet
+        src="exhibits/exhibit-timing.png"
+        x={vertical ? 76 : 1000}
+        y={vertical ? 640 : 180}
+        w={vertical ? 928 : 780}
+        p={sheetP}
+        offsetY={Math.sin((frame / fps / 10) * Math.PI * 2) * 14}
+        code="E-04 / timing.json"
+      />
 
       {/* 三轨：画面 / 字幕 / 声音 —— 同一份时间轴切出来的三条带子 */}
       <div style={{ position: "absolute", left: trackX, top: trackY, width: trackW, opacity: sheetP }}>
@@ -420,8 +401,8 @@ export const TimelineBoard: React.FC<BoardProps> = ({ sc, vertical = false }) =>
             </div>
           </div>
         ))}
-        <div style={{ position: "absolute", left: 84 + playhead * (trackW - 84), top: -10, width: 2.5, height: 138, background: C.red, opacity: 0.9 }} />
-        <div style={{ position: "absolute", left: 79 + playhead * (trackW - 84), top: -18, width: 12, height: 12, borderRadius: "50%", background: C.red }} />
+        <div style={{ position: "absolute", left: 84 + playhead * (trackW - 84) - 3, top: -10, width: 7, height: 138, background: C.red, opacity: 0.9 }} />
+        <div style={{ position: "absolute", left: 74 + playhead * (trackW - 84), top: -20, width: 22, height: 22, borderRadius: "50%", background: C.red }} />
       </div>
 
       <Ruler
@@ -484,11 +465,11 @@ export const SoundBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
   const beats: number[] = [];
   for (let t = 0; t <= DURATION_SEC; t += beatSec * step) beats.push(t);
 
-  const playhead = clamp((frame - f(0.6)) / (f(11.4) - f(0.6)));
+  const playhead = clamp((frame - f(0.3)) / (f(sc.end - sc.start - 0.6)));
   const chipShow = st.map((_, i) => ramp(frame, f(2.0) + i * f(0.4), 12));
 
   return (
-    <Board vertical headerRight={on.tail !== undefined ? t(on.tail, "tail") : undefined}>
+    <Board vertical>
       <div style={{ position: "absolute", left: vertical ? 76 : 140, top: vertical ? 250 : 300, width: vertical ? 928 : 720 }}>
         <div style={{ fontFamily: MONO, fontSize: vertical ? 16 : 19, letterSpacing: "0.26em", color: C.inkFaint, opacity: over.opacity }}>
           {t(on.overline, "overline")}
@@ -504,14 +485,32 @@ export const SoundBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
         </div>
       </div>
 
-      <Sheet src="exhibits/exhibit-bgm-wave.png" x={waveX} y={waveY} w={waveW} p={sheetP} code="E-06 / bgm.wav" />
+      <Sheet
+        src="exhibits/exhibit-bgm-wave.png"
+        x={waveX}
+        y={waveY}
+        w={waveW}
+        p={sheetP}
+        offsetY={Math.sin((frame / fps / 10) * Math.PI * 2) * 14}
+        code="E-06 / bgm.wav"
+      />
 
       {/* 拍点红线 + 播放头，位置全部按 BPM 算，不手点 */}
       <div style={{ position: "absolute", left: waveX + 8, top: waveY + 8 + 8, width: waveW - 16, height: (waveW - 16) * (940 / 2400), opacity: sheetP, overflow: "hidden" }}>
         {beats.map((t, i) => (
           <div key={i} style={{ position: "absolute", left: (t / DURATION_SEC) * (waveW - 16), top: 0, width: 1, height: "100%", background: C.red, opacity: 0.34 }} />
         ))}
-        <div style={{ position: "absolute", left: playhead * (waveW - 16), top: 0, width: 2.5, height: "100%", background: C.red, opacity: 0.9 }} />
+        <div
+          style={{
+            position: "absolute",
+            left: playhead * (waveW - 16) - 16,
+            top: 0,
+            width: 34,
+            height: "100%",
+            background: "linear-gradient(90deg, transparent, rgba(217,93,69,0.24), transparent)",
+          }}
+        />
+        <div style={{ position: "absolute", left: playhead * (waveW - 16) - 2.5, top: 0, width: 5, height: "100%", background: C.red, opacity: 0.95 }} />
       </div>
 
       {on.caption ? (
@@ -559,24 +558,9 @@ export const CtaBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
   const url = enter(frame, f(0.25), "head", { fps });
   const lineA = enter(frame, f(1.3), "body", { fps });
   const lineB = enter(frame, f(1.8), "body", { fps });
-  const sealP = spring(frame, f(2.6), { fps, stiffness: 150, damping: 12 });
-  const rulerP = ramp(frame, f(1.0), 30);
-
-  const plateRows = [
-    `项目  ${(timing.title ?? "").split("·")[0].trim()}`,
-    "图号  P-001",
-    "依据  AGENTS.md",
-    `验收  ${timing.facts?.gates ?? 11} 道闸门 · 0 失败`,
-  ];
 
   return (
-    <Board
-      vertical={vertical}
-      headerRight={on.tail !== undefined ? t(on.tail, "tail") : undefined}
-      plateRows={plateRows}
-      plateScale={vertical ? 1.35 : 1.25}
-      plateWidth={vertical ? 330 : 320}
-    >
+    <Board vertical={vertical}>
       <div style={{ position: "absolute", left: vertical ? 76 : 140, top: vertical ? 470 : 360, width: vertical ? 928 : 1560 }}>
         <div style={{ fontFamily: MONO, fontSize: vertical ? 18 : 20, letterSpacing: "0.28em", color: C.inkFaint, opacity: kicker.opacity }}>
           {t(on.kicker, "kicker")}
@@ -604,16 +588,19 @@ export const CtaBoard: React.FC<BoardProps> = ({ sc, vertical = false }) => {
         </div>
       </div>
 
-      {/* 尺寸线不能跟文字流走：它会在「clone 下来先跑 doctor.cmd」上压一道红线 */}
-      <div style={{ position: "absolute", left: vertical ? 76 : 140, top: vertical ? 820 : 800 }}>
-        <Ruler x1={0} x2={vertical ? 900 : 1240} y={0} p={rulerP} label={`${timing.facts?.gates ?? 11} 道闸门`} scale={vertical ? 1.2 : 1} ticks={11} />
-      </div>
-
-      <Seal text={t(on.stamp, "stamp")} x={vertical ? 520 : 1420} y={vertical ? 1000 : 300} scale={vertical ? 1.5 : 1.25} p={sealP} color={C.green} rotate={-6} />
       {vertical ? (
         <Sheet src="exhibits/exhibit-tree.png" x={230} y={1190} w={620} p={ramp(frame, f(3.2), 18)} code="E-08" rotate={-1.2} />
       ) : (
-        <Sheet src="exhibits/exhibit-tree.png" x={1380} y={560} w={400} p={ramp(frame, f(3.2), 18)} code="E-08" rotate={-1.2} />
+        <Sheet
+          src="exhibits/exhibit-tree.png"
+          x={1280}
+          y={500}
+          w={520}
+          p={ramp(frame, f(3.2), 18)}
+          offsetY={Math.sin((frame / fps / 10) * Math.PI * 2) * 22}
+          code="E-08"
+          rotate={-1.2}
+        />
       )}
     </Board>
   );

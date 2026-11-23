@@ -20,52 +20,25 @@ export const VW = 1080;
 export const VH = 1920;
 
 export const C = {
-  paper: "#eef2f7",
-  paperHi: "#f6f9fc",
-  ink: "#143b6b",
-  inkSoft: "rgba(20,59,107,0.72)",
-  inkFaint: "rgba(20,59,107,0.42)",
-  red: "#c1272d",
-  green: "#1f7a4d",
-  rule: "rgba(20,59,107,0.34)",
-  ruleSoft: "rgba(20,59,107,0.16)",
-  fill: "rgba(20,59,107,0.055)",
+  paper: "#f5f4ef",
+  paperHi: "#fffefa",
+  ink: "#17212b",
+  inkSoft: "rgba(23,33,43,0.72)",
+  inkFaint: "rgba(23,33,43,0.42)",
+  red: "#d95d45",
+  green: "#237a57",
+  rule: "rgba(23,33,43,0.22)",
+  ruleSoft: "rgba(23,33,43,0.09)",
+  fill: "rgba(23,33,43,0.035)",
 } as const;
 
 export const FONT = '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
 export const MONO = '"Cascadia Mono", "Consolas", ui-monospace, monospace';
 
-/** 纸：细网格 40px、粗网格 200px。drift 让整张纸极慢地平移，避免全静止画面 */
-export const Paper: React.FC<{ w: number; h: number; drift?: number }> = ({ w, h, drift = 0 }) => {
-  const minor = `linear-gradient(to right, ${C.ruleSoft} 1px, transparent 1px),
-    linear-gradient(to bottom, ${C.ruleSoft} 1px, transparent 1px)`;
-  const major = `linear-gradient(to right, rgba(20,59,107,0.13) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(20,59,107,0.13) 1px, transparent 1px)`;
-  // 网格用 background-position 平移，不要用 transform + 加宽：
-  // 加宽的两层会在画布上留下可见接缝（2026-11-15 实测，静态图上有两条深线）。
-  return (
-    <AbsoluteFill style={{ backgroundColor: C.paper }}>
-      <AbsoluteFill
-        style={{
-          backgroundImage: minor,
-          backgroundSize: "40px 40px",
-          backgroundPosition: `${-drift}px ${drift * 0.5}px`,
-          width: w,
-          height: h,
-        }}
-      />
-      <AbsoluteFill
-        style={{
-          backgroundImage: major,
-          backgroundSize: "200px 200px",
-          backgroundPosition: `${-drift}px ${drift * 0.5}px`,
-          width: w,
-          height: h,
-        }}
-      />
-    </AbsoluteFill>
-  );
-};
+/** 纯色纸面：让真实证据和场景标题成为画面的视觉重点 */
+export const Paper: React.FC<{ w: number; h: number; drift?: number }> = () => (
+  <AbsoluteFill style={{ backgroundColor: C.paper }} />
+);
 
 /** 图框：内缩一圈墨线 + 四角圆点（施工图的对位点） */
 export const Frame: React.FC<{
@@ -74,46 +47,7 @@ export const Frame: React.FC<{
   inset?: number;
   draw?: number;
   children?: React.ReactNode;
-}> = ({ w, h, inset = 26, draw = 1, children }) => {
-  const dots = [
-    [inset, inset],
-    [w - inset, inset],
-    [inset, h - inset],
-    [w - inset, h - inset],
-  ];
-  return (
-    <>
-      <div
-        style={{
-          position: "absolute",
-          left: inset,
-          top: inset,
-          width: (w - inset * 2) * draw,
-          height: h - inset * 2,
-          border: `2px solid ${C.rule}`,
-          boxSizing: "border-box",
-          overflow: "hidden",
-        }}
-      />
-      {dots.map(([x, y], i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            left: x - 4,
-            top: y - 4,
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: C.ink,
-            opacity: draw,
-          }}
-        />
-      ))}
-      {children}
-    </>
-  );
-};
+}> = ({ children }) => <>{children}</>;
 
 /** 页眉：左「打印件 · 片名」，右一句依据。片名取 timing.json，不另写 */
 export const Header: React.FC<{
@@ -377,7 +311,8 @@ export const Sheet: React.FC<{
   scale?: number;
   code?: string;
   rotate?: number;
-}> = ({ src, x, y, w, p = 1, scale = 1, code, rotate = 0 }) => {
+  offsetY?: number;
+}> = ({ src, x, y, w, p = 1, scale = 1, code, rotate = 0, offsetY = 0 }) => {
   return (
     <div
       style={{
@@ -386,7 +321,7 @@ export const Sheet: React.FC<{
         top: y + (1 - p) * 24 * scale,
         width: w,
         opacity: clamp(p * 1.3),
-        transform: `rotate(${rotate}deg)`,
+        transform: `translateY(${offsetY}px) rotate(${rotate}deg)`,
       }}
     >
       <div
